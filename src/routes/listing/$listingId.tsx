@@ -84,9 +84,9 @@ function ListingPage() {
             )}
           </div>
           <div className="grid grid-cols-4 gap-3">
-            {listing.image_urls?.slice(1, 5).map((img, i) => (
+            {item.image_urls?.slice(1, 5).map((img, i) => (
               <div key={i} className="aspect-square bg-vault-900 rounded-lg overflow-hidden ring-1 ring-white/5">
-                <img src={img} alt={`${listing.title} ${i + 2}`} className="w-full h-full object-cover" />
+                <img src={img} alt={`${item.title} ${i + 2}`} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -94,46 +94,46 @@ function ListingPage() {
 
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded">{listing.condition}</span>
-            {listing.rarity && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-vault-400 bg-vault-800 px-2.5 py-1 rounded">{listing.rarity}</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded">{item.condition}</span>
+            {item.rarity && (
+              <span className="text-xs font-semibold uppercase tracking-wider text-vault-400 bg-vault-800 px-2.5 py-1 rounded">{item.rarity}</span>
             )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-display font-semibold mb-4">{listing.title}</h1>
+          <h1 className="text-3xl md:text-4xl font-display font-semibold mb-4">{item.title}</h1>
 
           <div className="flex items-center gap-4 mb-6">
             <p className="text-3xl font-display font-semibold text-primary">${price}</p>
-            {listing.stock <= 3 && listing.stock > 0 && (
-              <span className="text-xs font-semibold text-destructive">Only {listing.stock} left</span>
+            {item.stock <= 3 && item.stock > 0 && (
+              <span className="text-xs font-semibold text-destructive">Only {item.stock} left</span>
             )}
           </div>
 
-          <p className="text-vault-400 leading-relaxed mb-8">{listing.description || "No description provided."}</p>
+          <p className="text-vault-400 leading-relaxed mb-8">{item.description || "No description provided."}</p>
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-vault-900/50 rounded-lg p-4 ring-1 ring-white/5">
               <p className="text-[10px] uppercase tracking-widest text-vault-500 mb-1">Brand</p>
-              <p className="font-medium">{listing.brand ?? "Hot Wheels"}</p>
+              <p className="font-medium">{item.brand ?? "Hot Wheels"}</p>
             </div>
             <div className="bg-vault-900/50 rounded-lg p-4 ring-1 ring-white/5">
               <p className="text-[10px] uppercase tracking-widest text-vault-500 mb-1">Series</p>
-              <p className="font-medium">{listing.series ?? "—"}</p>
+              <p className="font-medium">{item.series ?? "—"}</p>
             </div>
             <div className="bg-vault-900/50 rounded-lg p-4 ring-1 ring-white/5">
               <p className="text-[10px] uppercase tracking-widest text-vault-500 mb-1">Year</p>
-              <p className="font-medium">{listing.year ?? "—"}</p>
+              <p className="font-medium">{item.year ?? "—"}</p>
             </div>
             <div className="bg-vault-900/50 rounded-lg p-4 ring-1 ring-white/5">
               <p className="text-[10px] uppercase tracking-widest text-vault-500 mb-1">Stock</p>
-              <p className="font-medium">{listing.stock}</p>
+              <p className="font-medium">{item.stock}</p>
             </div>
           </div>
 
           <div className="flex gap-3 mb-8">
             <button
               onClick={handleAddToCart}
-              disabled={adding || listing.stock <= 0}
+              disabled={adding || item.stock <= 0}
               className="flex-1 bg-primary text-vault-950 font-semibold py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {added ? "Added to Cart" : <><ShoppingCart className="size-4" /> Add to Cart</>}
@@ -157,13 +157,13 @@ function ListingPage() {
             </div>
           </div>
 
-          {listing.profiles && (
+          {item.profiles && (
             <div className="mt-8 flex items-center gap-3 p-4 bg-vault-900/50 rounded-lg ring-1 ring-white/5">
               <div className="size-10 rounded-full bg-vault-800 flex items-center justify-center text-sm font-semibold">
-                {(listing.profiles.display_name ?? "S")[0].toUpperCase()}
+                {(item.profiles.display_name ?? "S")[0].toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-medium">{listing.profiles.display_name ?? "Seller"}</p>
+                <p className="text-sm font-medium">{item.profiles.display_name ?? "Seller"}</p>
                 <p className="text-xs text-vault-500">Verified Seller</p>
               </div>
             </div>
