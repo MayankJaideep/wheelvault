@@ -46,13 +46,14 @@ function ListingPage() {
     );
   }
 
-  const price = (listing.price_cents / 100).toFixed(2);
-  const image = listing.image_urls?.[0];
+  const item = listing;
+  const price = (item.price_cents / 100).toFixed(2);
+  const image = item.image_urls?.[0];
 
   async function handleAddToCart() {
     setAdding(true);
     try {
-      await addToCartFn({ data: { listing_id: listing.id, qty: 1 } });
+      await addToCartFn({ data: { listing_id: item.id, qty: 1 } });
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
     } catch (err: any) {
