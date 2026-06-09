@@ -34,8 +34,8 @@ export type CartItem = {
 
 // Get all active listings
 export const getListings = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabase } = await import("@/integrations/supabase/client.server").then(m => m.supabaseAdmin);
-  const { data, error } = await supabase
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
     .from("listings")
     .select(
       `*, profiles: seller_id(display_name, avatar_url)`
