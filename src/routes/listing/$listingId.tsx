@@ -38,7 +38,13 @@ function ListingPage() {
   const [added, setAdded] = useState(false);
   const addToCartFn = useServerFn(addToCart);
 
-  if (!listing) return null;
+  if (!listing) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-24 text-center text-muted-foreground">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   const price = (listing.price_cents / 100).toFixed(2);
   const image = listing.image_urls?.[0];
