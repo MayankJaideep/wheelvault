@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, queryOptions, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import { getListings, type Listing } from "@/lib/marketplace.functions";
-import { Search, SlidersHorizontal, ChevronDown, ShoppingCart } from "lucide-react";
+import { formatINR } from "@/lib/format";
+import { Search, ChevronDown, ShoppingCart } from "lucide-react";
 
 const listingsQueryOptions = queryOptions({
   queryKey: ["browse-listings"],

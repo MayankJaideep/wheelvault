@@ -13,9 +13,11 @@ import { Route as SellRouteImport } from './routes/sell'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
+import { Route as AuctionAuctionIdRouteImport } from './routes/auction/$auctionId'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedCartRouteImport } from './routes/_authenticated/cart'
@@ -40,6 +42,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuctionsRoute = AuctionsRouteImport.update({
+  id: '/auctions',
+  path: '/auctions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -52,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
 const ListingListingIdRoute = ListingListingIdRouteImport.update({
   id: '/listing/$listingId',
   path: '/listing/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuctionAuctionIdRoute = AuctionAuctionIdRouteImport.update({
+  id: '/auction/$auctionId',
+  path: '/auction/$auctionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -72,6 +84,7 @@ const AuthenticatedCartRoute = AuthenticatedCartRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -79,10 +92,12 @@ export interface FileRoutesByFullPath {
   '/cart': typeof AuthenticatedCartRoute
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -90,12 +105,14 @@ export interface FileRoutesByTo {
   '/cart': typeof AuthenticatedCartRoute
   '/checkout': typeof AuthenticatedCheckoutRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -103,12 +120,14 @@ export interface FileRoutesById {
   '/_authenticated/cart': typeof AuthenticatedCartRoute
   '/_authenticated/checkout': typeof AuthenticatedCheckoutRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -116,10 +135,12 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/profile'
+    | '/auction/$auctionId'
     | '/listing/$listingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -127,11 +148,13 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/profile'
+    | '/auction/$auctionId'
     | '/listing/$listingId'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -139,16 +162,19 @@ export interface FileRouteTypes {
     | '/_authenticated/cart'
     | '/_authenticated/checkout'
     | '/_authenticated/profile'
+    | '/auction/$auctionId'
     | '/listing/$listingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CollectionsRoute: typeof CollectionsRoute
   SellRoute: typeof SellRoute
+  AuctionAuctionIdRoute: typeof AuctionAuctionIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
 }
 
@@ -182,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auctions': {
+      id: '/auctions'
+      path: '/auctions'
+      fullPath: '/auctions'
+      preLoaderRoute: typeof AuctionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -201,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/listing/$listingId'
       fullPath: '/listing/$listingId'
       preLoaderRoute: typeof ListingListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auction/$auctionId': {
+      id: '/auction/$auctionId'
+      path: '/auction/$auctionId'
+      fullPath: '/auction/$auctionId'
+      preLoaderRoute: typeof AuctionAuctionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/profile': {
@@ -246,22 +286,14 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CollectionsRoute: CollectionsRoute,
   SellRoute: SellRoute,
+  AuctionAuctionIdRoute: AuctionAuctionIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

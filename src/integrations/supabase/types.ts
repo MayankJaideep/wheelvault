@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      auctions: {
+        Row: {
+          created_at: string
+          current_bid_cents: number
+          ends_at: string
+          id: string
+          leading_bidder_id: string | null
+          listing_id: string
+          min_increment_cents: number
+          starting_cents: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_bid_cents: number
+          ends_at: string
+          id?: string
+          leading_bidder_id?: string | null
+          listing_id: string
+          min_increment_cents?: number
+          starting_cents: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_bid_cents?: number
+          ends_at?: string
+          id?: string
+          leading_bidder_id?: string | null
+          listing_id?: string
+          min_increment_cents?: number
+          starting_cents?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auctions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids: {
+        Row: {
+          amount_cents: number
+          auction_id: string
+          bidder_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          amount_cents: number
+          auction_id: string
+          bidder_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          amount_cents?: number
+          auction_id?: string
+          bidder_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -98,15 +177,7 @@ export type Database = {
           updated_at?: string
           year?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "listings_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       order_items: {
         Row: {
