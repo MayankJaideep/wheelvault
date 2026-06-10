@@ -13,6 +13,7 @@ import { Route as SellRouteImport } from './routes/sell'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuctionsRouteImport } from './routes/auctions'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
@@ -38,6 +39,11 @@ const BrowseRoute = BrowseRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuctionsRoute = AuctionsRouteImport.update({
+  id: '/auctions',
+  path: '/auctions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -72,6 +78,7 @@ const AuthenticatedCartRoute = AuthenticatedCartRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/auctions': typeof AuctionsRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/auctions'
     | '/auth'
     | '/browse'
     | '/collections'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  AuctionsRoute: typeof AuctionsRoute
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CollectionsRoute: typeof CollectionsRoute
@@ -180,6 +193,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auctions': {
+      id: '/auctions'
+      path: '/auctions'
+      fullPath: '/auctions'
+      preLoaderRoute: typeof AuctionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -246,6 +266,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  AuctionsRoute: AuctionsRoute,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CollectionsRoute: CollectionsRoute,
@@ -255,3 +276,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
