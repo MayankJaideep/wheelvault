@@ -1,66 +1,53 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
-import { getListing, addToCart } from "@/lib/marketplace.functions";
+import { useEffect, useState } from "react";
+import { getListing } from "@/lib/marketplace.functions";
 import { formatINR } from "@/lib/format";
-import { ShoppingCart, ArrowLeft, Heart, Share2, Truck, Shield } from "lucide-react";
+import { ListingImage } from "@/components/HotWheelsPlaceholder";
+import { WhatsAppOrderDialog } from "@/components/WhatsAppOrderDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, MessageCircle, ShieldCheck, Truck } from "lucide-react";
 
-const listingQO = (id: string) => queryOptions({ queryKey: ["listing", id], queryFn: () => getListing({ data: id }) });
+const qo = (id: string) => queryOptions({ queryKey: ["listing", id], queryFn: () => getListing({ data: id }) });
 
 export const Route = createFileRoute("/listing/$listingId")({
-  head: () => ({ meta: [{ title: "Listing — WheelVault" }, { name: "description", content: "View this die-cast collectible on WheelVault." }] }),
-  loader: async ({ context, params }) => { await context.queryClient.ensureQueryData(listingQO(params.listingId)); },
+  head: ({ params }) => ({ meta: [{ title: `Listing — WheelVault` }, { name: "description", content: `Hot Wheels listing ${params.listingId}` }] }),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(qo(params.listingId)),
   component: ListingPage,
-  errorComponent: () => (
-    <div className="max-w-7xl mx-auto px-6 py-24 text-center text-muted-foreground">
-      <p>Listing not found.</p>
-      <Link to="/browse" className="text-primary hover:underline mt-4 inline-block">Back to browse</Link>
-    </div>
-  ),
+  errorComponent: () => <div className="p-12 text-center text-muted-foreground">Listing not found.</div>,
+  notFoundComponent: () => <div className="p-12 text-center">Listing not found.</div>,
 });
 
 function ListingPage() {
   const { listingId } = Route.useParams();
-  const { data } = useQuery(listingQO(listingId));
-  const listing = data?.listing;
-  const navigate = useNavigate();
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
-  const [activeImg, setActiveImg] = useState(0);
-  const addFn = useServerFn(addToCart);
+  const { data } = useQuery(qo(listingId));
+  const l = data?.listing;
+  const [active, setActive] = useState(0);
+  const [dialogKind, setDialogKind] = useState<null | "buy" | "reserve">(null);
+  const [authed, setAuthed] = useState(false);
 
-  if (!listing) return <div className="max-w-7xl mx-auto px-6 py-24 text-center text-muted-foreground">Loading...</div>;
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setAuthed(!!data.session?.user)); }, []);
 
-  const images = listing.image_urls?.length ? listing.image_urls : ["https://images.unsplash.com/photo-1611016186353-9af58c69a533?w=800&h=600&fit=crop"];
-
-  async function handleAdd() {
-    setAdding(true);
-    try {
-      await addFn({ data: { listing_id: listing!.id, qty: 1 } });
-      setAdded(true);
-      setTimeout(() => setAdded(false), 2000);
-    } catch (err: any) {
-      if (err.message?.includes("Unauthorized")) navigate({ to: "/auth" });
-    } finally { setAdding(false); }
-  }
+  if (!l) return <div className="p-12 text-center">Loading…</div>;
+  const isSold = l.status === "sold";
+  const isReserved = l.status === "reserved";
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <Link to="/browse" className="inline-flex items-center gap-2 text-sm text-vault-400 hover:text-foreground transition-colors mb-8">
+    <div className="max-w-7xl mx-auto px-6 py-10">
+      <Link to="/browse" className="inline-flex items-center gap-2 text-sm text-vault-400 hover:text-foreground mb-6">
         <ArrowLeft className="size-4" /> Back to browse
       </Link>
 
-      <div className="grid lg:grid-cols-2 gap-12">
-        <div className="space-y-4">
+      <div className="grid lg:grid-cols-2 gap-10">
+        <div>
           <div className="aspect-square bg-vault-900 rounded-2xl overflow-hidden ring-1 ring-white/5">
-            <img src={images[activeImg]} alt={listing.title} className="w-full h-full object-cover" />
+            <ListingImage src={l.image_urls?.[active]} alt={l.title} />
           </div>
-          {images.length > 1 && (
-            <div className="grid grid-cols-4 gap-3">
-              {images.slice(0, 4).map((img, i) => (
-                <button key={i} onClick={() => setActiveImg(i)} className={`aspect-square bg-vault-900 rounded-lg overflow-hidden ring-1 ${activeImg === i ? "ring-primary" : "ring-white/5"}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+          {l.image_urls?.length > 1 && (
+            <div className="flex gap-2 mt-3 overflow-x-auto">
+              {l.image_urls.map((u: string, i: number) => (
+                <button key={i} onClick={() => setActive(i)} className={`size-16 rounded-lg overflow-hidden ring-2 shrink-0 ${i === active ? "ring-primary" : "ring-white/10"}`}>
+                  <img src={u} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -68,51 +55,69 @@ function ListingPage() {
         </div>
 
         <div>
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-1 rounded">{listing.condition}</span>
-            {listing.rarity && <span className="text-xs font-semibold uppercase tracking-wider text-vault-300 bg-vault-800 px-2.5 py-1 rounded">{listing.rarity}</span>}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-semibold uppercase text-primary bg-primary/15 px-2.5 py-1 rounded">{l.condition}</span>
+            {l.rarity && <span className="text-xs font-semibold uppercase text-vault-200 bg-vault-800 px-2.5 py-1 rounded">{l.rarity}</span>}
+            {isReserved && <span className="text-xs font-semibold uppercase text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded">Reserved</span>}
+            {isSold && <span className="text-xs font-semibold uppercase text-vault-300 bg-vault-800 px-2.5 py-1 rounded">Sold</span>}
           </div>
+          <p className="text-sm text-vault-400 uppercase tracking-wide">{l.brand || "Hot Wheels"} {l.series ? `· ${l.series}` : ""} {l.year ? `· ${l.year}` : ""}</p>
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl tracking-tight mt-1">{l.title}</h1>
+          <p className="text-primary font-display font-bold text-3xl mt-5">{formatINR(l.price_cents)}</p>
 
-          <h1 className="text-3xl md:text-4xl font-display font-semibold mb-4">{listing.title}</h1>
+          {l.sale_type === "auction" ? (
+            <div className="mt-6 bg-vault-900/60 ring-1 ring-primary/30 rounded-xl p-5">
+              <p className="text-sm text-vault-300">This item is up for live auction.</p>
+              <Link to="/auctions" className="mt-3 inline-flex bg-primary text-vault-950 font-semibold px-5 py-2.5 rounded-full">Go to auctions</Link>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 mt-6">
+              <button
+                onClick={() => setDialogKind("buy")}
+                disabled={isSold}
+                className="bg-[#25D366] text-black font-semibold py-3 rounded-full hover:bg-[#1ebe5b] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="size-5" />
+                {isSold ? "Sold" : isReserved ? "Reserved — message anyway" : "Buy on WhatsApp"}
+              </button>
+              {!isSold && !isReserved && (
+                <button onClick={() => setDialogKind("reserve")} className="bg-vault-900 ring-1 ring-white/10 py-3 rounded-full font-semibold hover:ring-primary/40">
+                  Reserve & ask a question
+                </button>
+              )}
+            </div>
+          )}
 
-          <div className="flex items-center gap-4 mb-6">
-            <p className="text-4xl font-display font-semibold text-primary">{formatINR(listing.price_cents)}</p>
-            {listing.stock <= 3 && listing.stock > 0 && <span className="text-xs font-semibold text-destructive">Only {listing.stock} left</span>}
-          </div>
+          {l.description && <p className="text-vault-300 leading-relaxed mt-7 whitespace-pre-line">{l.description}</p>}
 
-          <p className="text-vault-400 leading-relaxed mb-8">{listing.description || "No description provided."}</p>
-
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <Info label="Brand" value={listing.brand ?? "Hot Wheels"} />
-            <Info label="Series" value={listing.series ?? "—"} />
-            <Info label="Year" value={String(listing.year ?? "—")} />
-            <Info label="Stock" value={String(listing.stock)} />
-          </div>
-
-          <div className="flex gap-3 mb-8">
-            <button onClick={handleAdd} disabled={adding || listing.stock <= 0}
-              className="flex-1 bg-primary text-vault-950 font-semibold py-3 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-              {added ? "Added to Cart ✓" : <><ShoppingCart className="size-4" /> Add to Cart</>}
-            </button>
-            <button className="p-3 bg-vault-900 border border-white/10 rounded-lg hover:bg-vault-800"><Heart className="size-5" /></button>
-            <button className="p-3 bg-vault-900 border border-white/10 rounded-lg hover:bg-vault-800"><Share2 className="size-5" /></button>
-          </div>
-
-          <div className="space-y-4 border-t border-white/5 pt-8">
-            <div className="flex items-center gap-3 text-sm text-vault-400"><Truck className="size-5 text-primary" /><span>Free insured shipping on orders over ₹2,500</span></div>
-            <div className="flex items-center gap-3 text-sm text-vault-400"><Shield className="size-5 text-primary" /><span>Vault-authenticated condition guarantee</span></div>
+          <div className="grid grid-cols-2 gap-3 mt-8">
+            <Info icon={<ShieldCheck className="size-4" />} label="Authentic" sub="In-hand inspected" />
+            <Info icon={<Truck className="size-4" />} label="Insured" sub="BlueDart / DHL" />
           </div>
         </div>
       </div>
+
+      <WhatsAppOrderDialog
+        open={!!dialogKind}
+        onClose={() => setDialogKind(null)}
+        kind={dialogKind ?? "buy"}
+        itemTitle={l.title}
+        amountCents={l.price_cents}
+        listingId={l.id}
+        isAuthenticated={authed}
+      />
     </div>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ icon, label, sub }: { icon: React.ReactNode; label: string; sub: string }) {
   return (
-    <div className="bg-vault-900/50 rounded-lg p-4 ring-1 ring-white/5">
-      <p className="text-[10px] uppercase tracking-widest text-vault-500 mb-1">{label}</p>
-      <p className="font-medium">{value}</p>
+    <div className="bg-vault-900/60 ring-1 ring-white/5 rounded-lg p-3 flex items-center gap-3">
+      <div className="text-primary">{icon}</div>
+      <div>
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-vault-400">{sub}</p>
+      </div>
     </div>
   );
 }
