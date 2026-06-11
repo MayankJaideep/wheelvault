@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SellRouteImport } from './routes/sell'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -19,14 +18,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as AuctionAuctionIdRouteImport } from './routes/auction/$auctionId'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
-import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
-import { Route as AuthenticatedCartRouteImport } from './routes/_authenticated/cart'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
-const SellRoute = SellRouteImport.update({
-  id: '/sell',
-  path: '/sell',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CollectionsRoute = CollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -71,14 +64,9 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedCheckoutRoute = AuthenticatedCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedCartRoute = AuthenticatedCartRouteImport.update({
-  id: '/cart',
-  path: '/cart',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
@@ -88,9 +76,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
-  '/sell': typeof SellRoute
-  '/cart': typeof AuthenticatedCartRoute
-  '/checkout': typeof AuthenticatedCheckoutRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
@@ -101,9 +87,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
-  '/sell': typeof SellRoute
-  '/cart': typeof AuthenticatedCartRoute
-  '/checkout': typeof AuthenticatedCheckoutRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
@@ -116,9 +100,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
-  '/sell': typeof SellRoute
-  '/_authenticated/cart': typeof AuthenticatedCartRoute
-  '/_authenticated/checkout': typeof AuthenticatedCheckoutRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
@@ -131,9 +113,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
-    | '/sell'
-    | '/cart'
-    | '/checkout'
+    | '/admin'
     | '/profile'
     | '/auction/$auctionId'
     | '/listing/$listingId'
@@ -144,9 +124,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
-    | '/sell'
-    | '/cart'
-    | '/checkout'
+    | '/admin'
     | '/profile'
     | '/auction/$auctionId'
     | '/listing/$listingId'
@@ -158,9 +136,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
-    | '/sell'
-    | '/_authenticated/cart'
-    | '/_authenticated/checkout'
+    | '/_authenticated/admin'
     | '/_authenticated/profile'
     | '/auction/$auctionId'
     | '/listing/$listingId'
@@ -173,20 +149,12 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CollectionsRoute: typeof CollectionsRoute
-  SellRoute: typeof SellRoute
   AuctionAuctionIdRoute: typeof AuctionAuctionIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sell': {
-      id: '/sell'
-      path: '/sell'
-      fullPath: '/sell'
-      preLoaderRoute: typeof SellRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/collections': {
       id: '/collections'
       path: '/collections'
@@ -250,32 +218,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/checkout': {
-      id: '/_authenticated/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof AuthenticatedCheckoutRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/cart': {
-      id: '/_authenticated/cart'
-      path: '/cart'
-      fullPath: '/cart'
-      preLoaderRoute: typeof AuthenticatedCartRouteImport
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedCartRoute: typeof AuthenticatedCartRoute
-  AuthenticatedCheckoutRoute: typeof AuthenticatedCheckoutRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedCartRoute: AuthenticatedCartRoute,
-  AuthenticatedCheckoutRoute: AuthenticatedCheckoutRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
 }
 
@@ -290,10 +249,19 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CollectionsRoute: CollectionsRoute,
-  SellRoute: SellRoute,
   AuctionAuctionIdRoute: AuctionAuctionIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

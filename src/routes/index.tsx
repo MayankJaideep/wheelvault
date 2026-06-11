@@ -1,160 +1,157 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { getListings, getAuctions, type Listing, type Auction } from "@/lib/marketplace.functions";
+import { useQuery, queryOptions } from "@tanstack/react-query";
+import { getFeaturedListings, getAuctions, getListings } from "@/lib/marketplace.functions";
 import { formatINR, formatTimeLeft } from "@/lib/format";
-import { ShoppingCart, ArrowRight, Timer, Zap, ShieldCheck, Trophy, Sparkles } from "lucide-react";
+import { ListingImage } from "@/components/HotWheelsPlaceholder";
+import { useEffect, useState } from "react";
+import { Flame, Gavel, Truck, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
 
-const listingsQO = queryOptions({ queryKey: ["listings"], queryFn: () => getListings() });
+const featuredQO = queryOptions({ queryKey: ["featured"], queryFn: () => getFeaturedListings() });
 const auctionsQO = queryOptions({ queryKey: ["auctions"], queryFn: () => getAuctions() });
+const allQO = queryOptions({ queryKey: ["listings"], queryFn: () => getListings() });
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WheelVault — India's Hot Wheels & Die-Cast Marketplace" },
-      { name: "description", content: "Buy, sell, trade and bid on rare Hot Wheels and die-cast collectibles. Verified sellers. INR pricing. Pan-India shipping." },
-      { property: "og:title", content: "WheelVault — India's Hot Wheels Marketplace" },
-      { property: "og:description", content: "Buy, sell, and auction rare Hot Wheels in India. Verified, insured, vault-grade." },
-      { property: "og:image", content: "https://images.unsplash.com/photo-1611016186353-9af58c69a533?w=1200&h=630&fit=crop" },
+      { title: "WheelVault — Authentic Hot Wheels & Die-Cast in India" },
+      { name: "description", content: "Curated Hot Wheels treasure hunts, super treasure hunts, premium series and rare castings. Buy at fixed price or bid in live auctions. WhatsApp checkout." },
     ],
   }),
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(listingsQO),
+      context.queryClient.ensureQueryData(featuredQO),
       context.queryClient.ensureQueryData(auctionsQO),
+      context.queryClient.ensureQueryData(allQO),
     ]);
   },
-  component: HomePage,
-  errorComponent: () => <div className="p-12 text-center text-muted-foreground">Failed to load. Please refresh.</div>,
-  notFoundComponent: () => <div className="p-12 text-center text-muted-foreground">Not found</div>,
+  component: Home,
 });
 
-function HomePage() {
-  const { data: lData } = useSuspenseQuery(listingsQO);
-  const { data: aData } = useSuspenseQuery(auctionsQO);
-  const listings = lData?.listings ?? [];
-  const auctions = aData?.auctions ?? [];
-
-  const featured = listings.slice(0, 4);
-  const trending = listings.slice(4, 8);
-  const hero = listings[0];
+function Home() {
+  const { data: featured } = useQuery(featuredQO);
+  const { data: auctions } = useQuery(auctionsQO);
+  const { data: all } = useQuery(allQO);
+  const featuredItems = featured?.listings ?? [];
+  const auctionItems = auctions?.auctions ?? [];
+  const allItems = all?.listings ?? [];
 
   return (
-    <>
-      <LiveTicker />
+    <div>
+      <Marquee />
+      <Hero hasItems={allItems.length > 0} />
+      <TrustBar />
 
-      {/* HERO */}
-      <header className="relative py-16 md:py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,oklch(0.65_0.2_45/_0.15),transparent_50%)] pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-6 relative">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-widest mb-6">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                </span>
-                {auctions.length} live auctions · India
-              </div>
-              <h1 className="text-5xl md:text-7xl font-display font-semibold leading-[1.05] text-balance mb-6 tracking-tight">
-                India's home for <span className="text-primary italic">Hot Wheels</span> & die-cast.
-              </h1>
-              <p className="text-vault-400 text-lg max-w-[52ch] text-pretty mb-10 leading-relaxed">
-                Buy instantly, place bids in real-time, or list your own collection. Verified condition, insured shipping, secure payments — all priced in rupees.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link to="/browse" className="group bg-primary text-vault-950 font-semibold py-3 px-6 rounded-md ring-1 ring-primary flex items-center gap-3 transition-transform hover:-translate-y-0.5">
-                  <Zap className="size-4" />
-                  <span>Enter Marketplace</span>
-                </Link>
-                <Link to="/auctions" className="px-6 py-3 font-semibold ring-1 ring-vault-700 rounded-md hover:bg-vault-800 transition-colors flex items-center gap-2">
-                  <Timer className="size-4 text-primary" />
-                  Live Auctions
-                </Link>
-                <Link to="/sell" className="px-6 py-3 font-semibold text-vault-400 hover:text-foreground transition-colors">
-                  Sell your collection →
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6 mt-12 pt-10 border-t border-white/5 max-w-lg">
-                <Stat label="Listings" value={listings.length.toString()} />
-                <Stat label="Live Auctions" value={auctions.length.toString()} />
-                <Stat label="Verified" value="100%" />
-              </div>
-            </div>
-
-            <div className="lg:col-span-5">
-              <HeroCard listing={hero} />
-            </div>
+      {auctionItems.length > 0 && (
+        <Section title="Live Auctions" icon={<Gavel className="size-5 text-primary" />} link="/auctions" linkLabel="View all auctions">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {auctionItems.slice(0, 3).map((a) => <AuctionCard key={a.id} auction={a} />)}
           </div>
-        </div>
-      </header>
-
-      {/* LIVE AUCTIONS */}
-      {auctions.length > 0 && (
-        <section className="py-20 bg-vault-900/30">
-          <div className="max-w-7xl mx-auto px-6">
-            <SectionHeader title="Live Auctions" subtitle="Bid in real-time before the timer ends." link="/auctions" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {auctions.slice(0, 4).map((a) => <AuctionCard key={a.id} auction={a} />)}
-            </div>
-          </div>
-        </section>
+        </Section>
       )}
 
-      {/* FEATURED */}
-      <section className="py-24 max-w-7xl mx-auto px-6">
-        <SectionHeader title="Featured Drops" subtitle="Hand-picked by the WheelVault curation team." link="/browse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featured.map((l) => <ListingCard key={l.id} listing={l} />)}
-        </div>
-      </section>
-
-      {/* VALUE PROPS */}
-      <section className="py-16 bg-vault-900/30">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-6">
-          <ValueCard icon={ShieldCheck} title="Verified Authenticity" desc="Every premium listing is condition-graded before going live." />
-          <ValueCard icon={Trophy} title="Live Bidding" desc="Real-time auction updates so you never miss a chance at a grail." />
-          <ValueCard icon={Sparkles} title="INR Pricing, India Shipping" desc="Pay in rupees with insured, tracked shipping nationwide." />
-        </div>
-      </section>
-
-      {/* TRENDING */}
-      {trending.length > 0 && (
-        <section className="py-24 max-w-7xl mx-auto px-6">
-          <SectionHeader title="Trending Now" subtitle="Most-viewed castings in the last 24 hours." link="/browse" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {trending.map((l) => <ListingCard key={l.id} listing={l} />)}
-          </div>
-        </section>
+      {featuredItems.length > 0 && (
+        <Section title="Featured in the Vault" icon={<Flame className="size-5 text-primary" />} link="/browse" linkLabel="Browse all">
+          <Grid items={featuredItems} />
+        </Section>
       )}
 
-      {/* CTA */}
-      <section className="py-24">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="bg-gradient-to-br from-primary/20 via-vault-900 to-vault-900 ring-1 ring-primary/20 rounded-3xl p-10 md:p-16 text-center">
-            <h2 className="text-3xl md:text-5xl font-display font-semibold mb-4">Got a vault of your own?</h2>
-            <p className="text-vault-300 max-w-xl mx-auto mb-8">List your Hot Wheels or die-cast pieces in minutes. Reach collectors across India and get paid securely.</p>
-            <Link to="/sell" className="inline-flex items-center gap-2 bg-primary text-vault-950 font-semibold px-6 py-3 rounded-md hover:bg-primary/90 transition-all">
-              Start selling <ArrowRight className="size-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-    </>
+      {allItems.length > 0 ? (
+        <Section title="Latest Arrivals" link="/browse" linkLabel="See more">
+          <Grid items={allItems.slice(0, 8)} />
+        </Section>
+      ) : (
+        <EmptyVault />
+      )}
+
+      <HowItWorks />
+    </div>
   );
 }
 
-function LiveTicker() {
+function Marquee() {
   return (
-    <div className="bg-primary py-2 overflow-hidden">
-      <div className="flex whitespace-nowrap animate-marquee">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="flex gap-8 items-center px-4 shrink-0">
-            <TickerItem text="SOLD · 1971 Porsche 911 — ₹4,25,000" />
-            <TickerItem text="LIVE BID · RLC Skyline GT-R — ₹89,000" />
-            <TickerItem text="SOLD · Spectraflame Pink Bug — ₹1,10,000" />
-            <TickerItem text="NEW DROP · HWC Series 5 Now Live" />
+    <div className="bg-primary text-vault-950 font-semibold text-xs uppercase tracking-widest overflow-hidden border-b border-orange-700/30">
+      <div className="flex gap-12 py-2.5 animate-[scroll_30s_linear_infinite] whitespace-nowrap">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <span key={i} className="flex items-center gap-3">
+            <Flame className="size-3" /> Treasure Hunts
+            <span className="opacity-50">•</span> Super TH
+            <span className="opacity-50">•</span> Premium
+            <span className="opacity-50">•</span> RLC
+            <span className="opacity-50">•</span> JDM
+            <span className="opacity-50">•</span> Boulevard
+            <span className="opacity-50">•</span>
+          </span>
+        ))}
+      </div>
+      <style>{`@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+    </div>
+  );
+}
+
+function Hero({ hasItems }: { hasItems: boolean }) {
+  return (
+    <section className="relative overflow-hidden border-b border-white/5">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_30%,rgba(255,107,0,0.18),transparent_55%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_80%,rgba(255,107,0,0.10),transparent_50%)]" />
+      <div className="relative max-w-7xl mx-auto px-6 py-20 md:py-28 grid lg:grid-cols-12 gap-10 items-center">
+        <div className="lg:col-span-7">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest bg-primary/15 text-primary px-3 py-1.5 rounded-full ring-1 ring-primary/30">
+            <span className="size-1.5 bg-primary rounded-full animate-pulse" /> Curated by collectors · Shipped from India
+          </span>
+          <h1 className="font-display font-extrabold text-4xl md:text-6xl lg:text-7xl tracking-tighter mt-6 leading-[1.02]">
+            The Vault for <span className="text-primary italic">Hot Wheels</span> Hunters.
+          </h1>
+          <p className="text-vault-300 text-lg mt-6 max-w-2xl leading-relaxed">
+            Treasure Hunts, Super TH, Premium, RLC, JDM and rare castings — handpicked, authenticated, and ready to ship. Buy at fixed price or bid live.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-8">
+            <Link to="/browse" className="bg-primary text-vault-950 px-6 py-3 rounded-full font-semibold hover:bg-primary/90 flex items-center gap-2">
+              Browse Vault <ArrowRight className="size-4" />
+            </Link>
+            <Link to="/auctions" className="bg-vault-900 ring-1 ring-white/10 px-6 py-3 rounded-full font-semibold hover:ring-primary/40 flex items-center gap-2">
+              <Gavel className="size-4" /> Live Auctions
+            </Link>
+          </div>
+          {!hasItems && (
+            <p className="text-sm text-vault-500 mt-6 italic">New drops landing soon — admin uploads in progress.</p>
+          )}
+        </div>
+        <div className="lg:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden ring-1 ring-white/10 bg-gradient-to-br from-orange-600 via-red-700 to-vault-950 shadow-2xl shadow-orange-500/20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,white,transparent_60%)] opacity-25" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="font-display font-black text-5xl md:text-6xl text-white italic tracking-tighter drop-shadow-2xl">HOT WHEELS</div>
+              <div className="text-white/80 text-xs mt-2 uppercase tracking-[0.4em] font-semibold">WheelVault Collection</div>
+            </div>
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 bg-vault-950/70 backdrop-blur-md rounded-xl p-3 ring-1 ring-white/10 flex items-center justify-between text-xs">
+            <span className="font-semibold">Insured shipping</span>
+            <span className="text-vault-300">BlueDart · DHL</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustBar() {
+  const items = [
+    { icon: ShieldCheck, label: "100% Authentic", sub: "Personally inspected" },
+    { icon: MessageCircle, label: "WhatsApp Orders", sub: "Quick & transparent" },
+    { icon: Truck, label: "Insured Shipping", sub: "BlueDart / DHL" },
+    { icon: Gavel, label: "Live Auctions", sub: "Real-time bidding" },
+  ];
+  return (
+    <div className="border-y border-white/5 bg-vault-950/50">
+      <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+        {items.map((it) => (
+          <div key={it.label} className="flex items-center gap-3">
+            <it.icon className="size-6 text-primary shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">{it.label}</p>
+              <p className="text-xs text-vault-400">{it.sub}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -162,128 +159,97 @@ function LiveTicker() {
   );
 }
 
-function TickerItem({ text }: { text: string }) {
+function Section({ title, icon, link, linkLabel, children }: { title: string; icon?: React.ReactNode; link?: string; linkLabel?: string; children: React.ReactNode }) {
   return (
-    <>
-      <span className="text-xs font-semibold uppercase tracking-wider text-vault-950">{text}</span>
-      <span className="size-1.5 bg-vault-950 rounded-full" />
-    </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-2xl md:text-3xl font-display font-semibold text-primary">{value}</p>
-      <p className="text-xs text-vault-500 uppercase tracking-widest mt-1">{label}</p>
-    </div>
-  );
-}
-
-function SectionHeader({ title, subtitle, link }: { title: string; subtitle: string; link: string }) {
-  return (
-    <div className="flex items-end justify-between mb-12">
-      <div>
-        <h2 className="text-3xl font-display font-semibold mb-2">{title}</h2>
-        <p className="text-vault-400 text-sm">{subtitle}</p>
+    <section className="max-w-7xl mx-auto px-6 py-14">
+      <div className="flex items-end justify-between mb-8">
+        <h2 className="font-display font-bold text-2xl md:text-3xl tracking-tight flex items-center gap-2">{icon}{title}</h2>
+        {link && <Link to={link} className="text-sm text-vault-300 hover:text-primary flex items-center gap-1">{linkLabel} <ArrowRight className="size-3.5" /></Link>}
       </div>
-      <Link to={link as any} className="text-sm font-semibold text-primary hover:text-orange-400 transition-colors border-b border-primary/20 pb-1">
-        View all →
-      </Link>
-    </div>
+      {children}
+    </section>
   );
 }
 
-function HeroCard({ listing }: { listing?: Listing }) {
-  const image = listing?.image_urls?.[0] ?? "https://images.unsplash.com/photo-1611016186353-9af58c69a533?w=1200&h=1200&fit=crop";
+function Grid({ items }: { items: any[] }) {
   return (
-    <div className="relative group">
-      <div className="absolute -inset-4 bg-primary/10 blur-3xl rounded-full" />
-      <div className="relative w-full aspect-square bg-vault-900 rounded-2xl ring-1 ring-white/5 grid place-items-center shadow-2xl overflow-hidden">
-        <img src={image} alt={listing?.title ?? "Featured die-cast"} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" />
-        <div className="absolute inset-0 bg-gradient-to-t from-vault-950 via-vault-950/20 to-transparent" />
-        <div className="absolute bottom-6 left-6 right-6">
-          <p className="text-[10px] text-primary uppercase tracking-widest mb-2 font-semibold">Featured Drop</p>
-          <h3 className="text-xl font-display font-semibold mb-1 line-clamp-1">{listing?.title ?? "Skyline GT-R V-Spec"}</h3>
-          <p className="text-sm text-vault-300">{listing ? formatINR(listing.price_cents) : "₹2,499"}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValueCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
-  return (
-    <div className="bg-vault-900/60 ring-1 ring-white/5 rounded-2xl p-6">
-      <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-4">
-        <Icon className="size-5" />
-      </div>
-      <h3 className="font-display font-semibold text-lg mb-1">{title}</h3>
-      <p className="text-sm text-vault-400">{desc}</p>
-    </div>
-  );
-}
-
-function ListingCard({ listing }: { listing: Listing }) {
-  return (
-    <Link to="/listing/$listingId" params={{ listingId: listing.id }} className="group bg-vault-900/50 rounded-xl ring-1 ring-white/5 overflow-hidden flex flex-col hover:ring-primary/30 hover:-translate-y-0.5 transition-all duration-300">
-      <div className="relative w-full aspect-[4/3] bg-vault-800 overflow-hidden">
-        {listing.image_urls?.[0] ? (
-          <img src={listing.image_urls[0]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : <div className="w-full h-full flex items-center justify-center text-vault-600"><ShoppingCart className="size-8" /></div>}
-        {listing.rarity && (
-          <span className="absolute top-3 left-3 text-[10px] font-bold bg-vault-950/80 backdrop-blur-md text-primary px-2 py-1 rounded ring-1 ring-primary/30 uppercase tracking-wider">{listing.rarity}</span>
-        )}
-      </div>
-      <div className="p-5 flex-1 flex flex-col">
-        <div className="flex justify-between items-start mb-2 gap-2">
-          <div className="min-w-0">
-            <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">{listing.title}</h3>
-            <p className="text-xs text-vault-500 tracking-wide uppercase truncate">{listing.brand ?? "Hot Wheels"} {listing.series ? `· ${listing.series}` : ""}</p>
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+      {items.map((l) => (
+        <Link key={l.id} to="/listing/$listingId" params={{ listingId: l.id }} className="group">
+          <div className="aspect-square bg-vault-900 rounded-xl overflow-hidden ring-1 ring-white/5 group-hover:ring-primary/40 transition-all">
+            <ListingImage src={l.image_urls?.[0]} alt={l.title} />
           </div>
-          <span className="text-[10px] font-semibold bg-vault-800 px-2 py-0.5 rounded text-vault-400 shrink-0">{listing.condition}</span>
-        </div>
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-white/5">
-          <div>
-            <p className="text-[10px] text-vault-500 uppercase">Price</p>
-            <p className="text-lg font-display font-medium">{formatINR(listing.price_cents)}</p>
+          <div className="mt-3">
+            <p className="text-xs text-vault-400 uppercase tracking-wide truncate">{l.brand || "Hot Wheels"} · {l.series || "Mainline"}</p>
+            <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">{l.title}</p>
+            <p className="text-primary font-display font-semibold mt-0.5">{formatINR(l.price_cents)}</p>
+            {l.status === "reserved" && <span className="text-[10px] uppercase tracking-wider text-yellow-400 font-semibold">Reserved</span>}
+            {l.status === "sold" && <span className="text-[10px] uppercase tracking-wider text-vault-500 font-semibold">Sold</span>}
           </div>
-          <span className="px-4 py-1.5 bg-primary/10 text-primary text-xs font-semibold rounded group-hover:bg-primary group-hover:text-vault-950 transition-all">Buy</span>
-        </div>
-      </div>
-    </Link>
+        </Link>
+      ))}
+    </div>
   );
 }
 
-function AuctionCard({ auction }: { auction: Auction }) {
+function AuctionCard({ auction }: { auction: any }) {
   const [, force] = useState(0);
-  useEffect(() => {
-    const i = setInterval(() => force((n) => n + 1), 1000);
-    return () => clearInterval(i);
-  }, []);
+  useEffect(() => { const i = setInterval(() => force((n) => n + 1), 1000); return () => clearInterval(i); }, []);
   const l = auction.listings;
   return (
-    <Link to="/auction/$auctionId" params={{ auctionId: auction.id }} className="group bg-vault-900/60 rounded-xl ring-1 ring-white/5 overflow-hidden flex flex-col hover:ring-primary/40 hover:-translate-y-0.5 transition-all">
-      <div className="relative w-full aspect-[4/3] bg-vault-800 overflow-hidden">
-        {l?.image_urls?.[0] ? (
-          <img src={l.image_urls[0]} alt={l.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : <div className="w-full h-full" />}
-        <div className="absolute top-3 right-3 px-2 py-1 bg-vault-950/80 backdrop-blur-md rounded text-[10px] font-bold text-primary ring-1 ring-primary/30 flex items-center gap-1">
-          <Timer className="size-3" />
-          {formatTimeLeft(auction.ends_at)}
-        </div>
+    <Link to="/auction/$auctionId" params={{ auctionId: auction.id }} className="group block bg-vault-900/60 ring-1 ring-white/5 rounded-2xl overflow-hidden hover:ring-primary/40 transition-all">
+      <div className="aspect-[4/3] bg-vault-900 relative">
+        <ListingImage src={l?.image_urls?.[0]} alt={l?.title ?? ""} />
+        <div className="absolute top-3 left-3 bg-primary text-vault-950 text-[10px] font-bold uppercase px-2 py-1 rounded">Live · {formatTimeLeft(auction.ends_at)}</div>
       </div>
-      <div className="p-5 flex-1 flex flex-col">
-        <h3 className="font-medium text-foreground group-hover:text-primary transition-colors line-clamp-1">{l?.title}</h3>
-        <p className="text-xs text-vault-500 uppercase tracking-wide truncate">{l?.brand} {l?.series ? `· ${l.series}` : ""}</p>
-        <div className="mt-auto pt-4 flex items-center justify-between border-t border-white/5">
+      <div className="p-4">
+        <p className="text-xs text-vault-400 uppercase tracking-wide">{l?.brand || "Hot Wheels"}</p>
+        <p className="font-medium truncate group-hover:text-primary transition-colors">{l?.title}</p>
+        <div className="flex justify-between items-end mt-3">
           <div>
-            <p className="text-[10px] text-vault-500 uppercase">Current Bid</p>
-            <p className="text-lg font-display font-medium text-primary">{formatINR(auction.current_bid_cents)}</p>
+            <p className="text-[10px] text-vault-500 uppercase tracking-wider">Current Bid</p>
+            <p className="text-primary font-display font-bold text-lg">{formatINR(auction.current_bid_cents)}</p>
           </div>
-          <span className="px-4 py-1.5 bg-primary text-vault-950 text-xs font-semibold rounded">Bid →</span>
+          <span className="text-xs text-vault-400">Bid now →</span>
         </div>
       </div>
     </Link>
+  );
+}
+
+function EmptyVault() {
+  return (
+    <section className="max-w-3xl mx-auto px-6 py-20 text-center">
+      <div className="size-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-display font-black italic text-2xl">HW</div>
+      <h3 className="font-display font-bold text-2xl mb-3">The vault is being stocked.</h3>
+      <p className="text-vault-400 leading-relaxed">New Hot Wheels drops are being added by the seller. Check back shortly, or follow on WhatsApp for instant alerts.</p>
+      <a href="https://wa.me/917483595994" target="_blank" rel="noopener noreferrer" className="inline-flex mt-6 items-center gap-2 bg-[#25D366] text-black px-5 py-2.5 rounded-full font-semibold">
+        <MessageCircle className="size-4" /> WhatsApp the Seller
+      </a>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    { n: "01", t: "Browse the vault", d: "Treasure hunts, premiums, JDM, and rare castings — all photographed in-hand." },
+    { n: "02", t: "Buy or place a bid", d: "Fixed price for instant purchase, or live auctions with real-time bid history." },
+    { n: "03", t: "Confirm on WhatsApp", d: "Share name, phone, address. Get UPI / bank details and arrange BlueDart / DHL pickup." },
+  ];
+  return (
+    <section className="bg-vault-950/40 border-y border-white/5 py-16">
+      <div className="max-w-7xl mx-auto px-6">
+        <h2 className="font-display font-bold text-2xl md:text-3xl mb-10 text-center">How WheelVault Works</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {steps.map((s) => (
+            <div key={s.n} className="bg-vault-900/60 ring-1 ring-white/5 rounded-2xl p-6">
+              <p className="font-display font-bold text-primary text-3xl">{s.n}</p>
+              <p className="font-semibold mt-3">{s.t}</p>
+              <p className="text-sm text-vault-400 mt-1 leading-relaxed">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
