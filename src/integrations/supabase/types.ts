@@ -93,31 +93,65 @@ export type Database = {
           },
         ]
       }
-      cart_items: {
+      inquiries: {
         Row: {
+          amount_cents: number | null
+          auction_id: string | null
+          buyer_address: string
+          buyer_name: string
+          buyer_phone: string
+          buyer_pincode: string | null
           created_at: string
           id: string
-          listing_id: string
-          qty: number
-          user_id: string
+          kind: string
+          listing_id: string | null
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
+          amount_cents?: number | null
+          auction_id?: string | null
+          buyer_address: string
+          buyer_name: string
+          buyer_phone: string
+          buyer_pincode?: string | null
           created_at?: string
           id?: string
-          listing_id: string
-          qty?: number
-          user_id: string
+          kind: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
+          amount_cents?: number | null
+          auction_id?: string | null
+          buyer_address?: string
+          buyer_name?: string
+          buyer_phone?: string
+          buyer_pincode?: string | null
           created_at?: string
           id?: string
-          listing_id?: string
-          qty?: number
-          user_id?: string
+          kind?: string
+          listing_id?: string | null
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "cart_items_listing_id_fkey"
+            foreignKeyName: "inquiries_auction_id_fkey"
+            columns: ["auction_id"]
+            isOneToOne: false
+            referencedRelation: "auctions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inquiries_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
@@ -131,10 +165,13 @@ export type Database = {
           condition: string
           created_at: string
           description: string | null
+          featured: boolean
           id: string
           image_urls: string[]
+          is_banner: boolean
           price_cents: number
           rarity: string | null
+          sale_type: string
           seller_id: string
           series: string | null
           status: string
@@ -148,10 +185,13 @@ export type Database = {
           condition?: string
           created_at?: string
           description?: string | null
+          featured?: boolean
           id?: string
           image_urls?: string[]
+          is_banner?: boolean
           price_cents: number
           rarity?: string | null
+          sale_type?: string
           seller_id: string
           series?: string | null
           status?: string
@@ -165,10 +205,13 @@ export type Database = {
           condition?: string
           created_at?: string
           description?: string | null
+          featured?: boolean
           id?: string
           image_urls?: string[]
+          is_banner?: boolean
           price_cents?: number
           rarity?: string | null
+          sale_type?: string
           seller_id?: string
           series?: string | null
           status?: string
@@ -293,15 +336,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -428,6 +498,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
