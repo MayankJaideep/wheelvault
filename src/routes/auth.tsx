@@ -37,7 +37,10 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (signUpError) throw signUpError;
-        setMessage("Check your email to confirm your account.");
+        // Auto sign-in after signup (email confirmation disabled)
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        navigate({ to: "/", replace: true });
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
