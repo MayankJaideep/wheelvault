@@ -17,7 +17,6 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as AuctionAuctionIdRouteImport } from './routes/auction/$auctionId'
-import { Route as ApiSeedAdminRouteImport } from './routes/api/seed-admin'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
@@ -60,11 +59,6 @@ const AuctionAuctionIdRoute = AuctionAuctionIdRouteImport.update({
   path: '/auction/$auctionId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiSeedAdminRoute = ApiSeedAdminRouteImport.update({
-  id: '/api/seed-admin',
-  path: '/api/seed-admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -84,7 +78,6 @@ export interface FileRoutesByFullPath {
   '/collections': typeof CollectionsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/api/seed-admin': typeof ApiSeedAdminRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
@@ -96,7 +89,6 @@ export interface FileRoutesByTo {
   '/collections': typeof CollectionsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/api/seed-admin': typeof ApiSeedAdminRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
@@ -110,7 +102,6 @@ export interface FileRoutesById {
   '/collections': typeof CollectionsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/api/seed-admin': typeof ApiSeedAdminRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
 }
@@ -124,7 +115,6 @@ export interface FileRouteTypes {
     | '/collections'
     | '/admin'
     | '/profile'
-    | '/api/seed-admin'
     | '/auction/$auctionId'
     | '/listing/$listingId'
   fileRoutesByTo: FileRoutesByTo
@@ -136,7 +126,6 @@ export interface FileRouteTypes {
     | '/collections'
     | '/admin'
     | '/profile'
-    | '/api/seed-admin'
     | '/auction/$auctionId'
     | '/listing/$listingId'
   id:
@@ -149,7 +138,6 @@ export interface FileRouteTypes {
     | '/collections'
     | '/_authenticated/admin'
     | '/_authenticated/profile'
-    | '/api/seed-admin'
     | '/auction/$auctionId'
     | '/listing/$listingId'
   fileRoutesById: FileRoutesById
@@ -161,7 +149,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CollectionsRoute: typeof CollectionsRoute
-  ApiSeedAdminRoute: typeof ApiSeedAdminRoute
   AuctionAuctionIdRoute: typeof AuctionAuctionIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
 }
@@ -224,13 +211,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuctionAuctionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/seed-admin': {
-      id: '/api/seed-admin'
-      path: '/api/seed-admin'
-      fullPath: '/api/seed-admin'
-      preLoaderRoute: typeof ApiSeedAdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
@@ -269,7 +249,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CollectionsRoute: CollectionsRoute,
-  ApiSeedAdminRoute: ApiSeedAdminRoute,
   AuctionAuctionIdRoute: AuctionAuctionIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
 }
