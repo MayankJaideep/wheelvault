@@ -122,13 +122,13 @@ function Navbar() {
 
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <Link to="/_authenticated/admin" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-primary/15 text-primary px-3 py-1.5 rounded-full ring-1 ring-primary/30 hover:bg-primary/25">
+            <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-primary/15 text-primary px-3 py-1.5 rounded-full ring-1 ring-primary/30 hover:bg-primary/25">
               <Shield className="size-3.5" /> Admin
             </Link>
           )}
           {user ? (
             <div className="hidden sm:flex items-center gap-3 text-sm">
-              <Link to="/_authenticated/profile" className="text-vault-300 hover:text-foreground flex items-center gap-1.5">
+              <Link to="/profile" className="text-vault-300 hover:text-foreground flex items-center gap-1.5">
                 <User className="size-4" />
                 <span className="hidden md:inline">{user.email.split("@")[0]}</span>
               </Link>
@@ -145,8 +145,8 @@ function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-white/5 bg-vault-950 px-5 py-4 flex flex-col gap-4 text-sm font-medium text-vault-300">
           {links}
-          {isAdmin && <Link to="/_authenticated/admin" onClick={() => setMobileOpen(false)} className="text-primary">Admin Dashboard</Link>}
-          {user && <Link to="/_authenticated/profile" onClick={() => setMobileOpen(false)}>Profile</Link>}
+          {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="text-primary">Admin Dashboard</Link>}
+          {user && <Link to="/profile" onClick={() => setMobileOpen(false)}>Profile</Link>}
           {user && <button onClick={signOut} className="text-left">Sign out</button>}
         </div>
       )}
