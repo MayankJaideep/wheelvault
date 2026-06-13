@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -15,6 +16,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, LogOut, Shield, Menu, X } from "lucide-react";
 
 function NotFoundComponent() {
+  const router = useRouter();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  useEffect(() => {
+    if (pathname === "/_authenticated/admin") {
+      router.navigate({ to: "/admin", replace: true });
+    }
+    if (pathname === "/_authenticated/profile") {
+      router.navigate({ to: "/profile", replace: true });
+    }
+  }, [pathname, router]);
+
+  if (pathname === "/_authenticated/admin" || pathname === "/_authenticated/profile") {
+    return <div className="flex min-h-screen items-center justify-center bg-background px-4 text-vault-300">Opening…</div>;
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -122,8 +139,8 @@ function Navbar() {
 
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <Link to="/admin" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-primary/15 text-primary px-3 py-1.5 rounded-full ring-1 ring-primary/30 hover:bg-primary/25">
-              <Shield className="size-3.5" /> Admin
+            <Link to="/admin" search={{ tab: "new" }} className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold bg-primary/15 text-primary px-3 py-1.5 rounded-full ring-1 ring-primary/30 hover:bg-primary/25">
+              <Shield className="size-3.5" /> Add Collection
             </Link>
           )}
           {user ? (
@@ -145,7 +162,7 @@ function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-white/5 bg-vault-950 px-5 py-4 flex flex-col gap-4 text-sm font-medium text-vault-300">
           {links}
-          {isAdmin && <Link to="/admin" onClick={() => setMobileOpen(false)} className="text-primary">Admin Dashboard</Link>}
+          {isAdmin && <Link to="/admin" search={{ tab: "new" }} onClick={() => setMobileOpen(false)} className="text-primary">Add Collection</Link>}
           {user && <Link to="/profile" onClick={() => setMobileOpen(false)}>Profile</Link>}
           {user && <button onClick={signOut} className="text-left">Sign out</button>}
         </div>
