@@ -23,8 +23,8 @@ function ProfilePage() {
       <p className="text-vault-400 mt-1">Welcome back, {p?.profile?.display_name ?? "Collector"}.</p>
 
       {p?.isAdmin && (
-        <Link to="/_authenticated/admin" className="mt-6 inline-flex items-center gap-2 bg-primary/15 text-primary px-4 py-2 rounded-full ring-1 ring-primary/30 font-semibold text-sm">
-          <Shield className="size-4" /> Open Admin Dashboard
+        <Link to="/admin" search={{ tab: "new" }} className="mt-6 inline-flex items-center gap-2 bg-primary/15 text-primary px-4 py-2 rounded-full ring-1 ring-primary/30 font-semibold text-sm">
+          <Shield className="size-4" /> Add Collection
         </Link>
       )}
 
