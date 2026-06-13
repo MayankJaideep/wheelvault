@@ -17,7 +17,7 @@ import {
 import { uploadListingImage } from "@/lib/storage";
 import { formatINR, formatTimeLeft } from "@/lib/format";
 import { ListingImage } from "@/components/HotWheelsPlaceholder";
-import { Shield, Plus, Trash2, Edit2, Star, Image as ImageIcon, Gavel, Inbox, X, Check } from "lucide-react";
+import { Shield, Plus, Trash2, Edit2, Star, Image as ImageIcon, Gavel, Inbox, X, Check, Megaphone } from "lucide-react";
 
 const profileQO = queryOptions({ queryKey: ["my-profile"], queryFn: () => getMyProfile() });
 
@@ -99,22 +99,61 @@ function ListingsTab() {
   return (
     <div className="space-y-3">
       {listings.map((l) => (
-        <div key={l.id} className="bg-vault-900/60 ring-1 ring-white/5 rounded-xl p-4 flex flex-wrap items-center gap-4">
-          <div className="size-16 rounded-lg overflow-hidden ring-1 ring-white/10 shrink-0"><ListingImage src={l.image_urls?.[0]} alt={l.title} /></div>
-          <div className="flex-1 min-w-[180px]">
-            <p className="font-semibold">{l.title}</p>
-            <p className="text-xs text-vault-400">{l.brand} · {l.series} · {l.condition}</p>
-            <p className="text-primary font-display font-semibold text-sm mt-1">{formatINR(l.price_cents)}</p>
-          </div>
-          <select value={l.status} onChange={(e) => setStatus(l.id, e.target.value)} className="bg-vault-950 ring-1 ring-white/10 rounded px-2 py-1 text-xs">
-            <option value="active">Active</option><option value="reserved">Reserved</option><option value="sold">Sold</option><option value="hidden">Hidden</option>
-          </select>
-          <button onClick={() => toggle(l.id, "featured", l.featured)} title="Toggle featured" className={`p-2 rounded ${l.featured ? "bg-primary/20 text-primary" : "bg-vault-950 text-vault-400"}`}>
-            <Star className="size-4" />
-          </button>
-          <button onClick={() => remove(l.id)} className="p-2 rounded bg-vault-950 text-vault-400 hover:text-destructive"><Trash2 className="size-4" /></button>
-        </div>
+        <ListingRow key={l.id} l={l} setStatus={setStatus} toggle={toggle} remove={remove} />
       ))}
+    </div>
+  );
+}
+
+function ListingRow({ l, setStatus, toggle, remove }: any) {
+  const [editing, setEditing] = useState(false);
+  const update = useServerFn(adminUpdateListing);
+  const qc = useQueryClient();
+  const [price, setPrice] = useState(String(l.price_cents / 100));
+  const [title, setTitle] = useState(l.title);
+  const [stock, setStock] = useState(String(l.stock));
+
+  async function save() {
+    await update({ data: { id: l.id, patch: { title, price_cents: Math.round(parseFloat(price) * 100), stock: parseInt(stock, 10) || 1 } as any } });
+    qc.invalidateQueries({ queryKey: ["listings"] });
+    setEditing(false);
+  }
+
+  return (
+    <div className="bg-vault-900/60 ring-1 ring-white/5 rounded-xl p-4 flex flex-wrap items-center gap-3">
+      <div className="size-16 rounded-lg overflow-hidden ring-1 ring-white/10 shrink-0"><ListingImage src={l.image_urls?.[0]} alt={l.title} /></div>
+      <div className="flex-1 min-w-[180px]">
+        {editing ? (
+          <div className="space-y-1.5">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-vault-950 ring-1 ring-white/10 rounded px-2 py-1 text-sm" />
+            <div className="flex gap-2">
+              <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" placeholder="₹" className="w-24 bg-vault-950 ring-1 ring-white/10 rounded px-2 py-1 text-xs" />
+              <input value={stock} onChange={(e) => setStock(e.target.value)} type="number" placeholder="Stock" className="w-20 bg-vault-950 ring-1 ring-white/10 rounded px-2 py-1 text-xs" />
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="font-semibold">{l.title}</p>
+            <p className="text-xs text-vault-400">{l.brand} · {l.series || "—"} · {l.condition} · Stock {l.stock}</p>
+            <p className="text-primary font-display font-semibold text-sm mt-1">{formatINR(l.price_cents)}</p>
+          </>
+        )}
+      </div>
+      <select value={l.status} onChange={(e) => setStatus(l.id, e.target.value)} className="bg-vault-950 ring-1 ring-white/10 rounded px-2 py-1 text-xs">
+        <option value="active">Active</option><option value="reserved">Reserved</option><option value="sold">Sold</option><option value="hidden">Hidden</option>
+      </select>
+      <button onClick={() => toggle(l.id, "featured", l.featured)} title="Toggle featured" className={`p-2 rounded ${l.featured ? "bg-primary/20 text-primary" : "bg-vault-950 text-vault-400"}`}>
+        <Star className="size-4" />
+      </button>
+      <button onClick={() => toggle(l.id, "is_banner", l.is_banner)} title="Toggle homepage banner" className={`p-2 rounded ${l.is_banner ? "bg-primary/20 text-primary" : "bg-vault-950 text-vault-400"}`}>
+        <Megaphone className="size-4" />
+      </button>
+      {editing ? (
+        <button onClick={save} className="p-2 rounded bg-primary/20 text-primary"><Check className="size-4" /></button>
+      ) : (
+        <button onClick={() => setEditing(true)} className="p-2 rounded bg-vault-950 text-vault-400 hover:text-foreground"><Edit2 className="size-4" /></button>
+      )}
+      <button onClick={() => remove(l.id)} className="p-2 rounded bg-vault-950 text-vault-400 hover:text-destructive"><Trash2 className="size-4" /></button>
     </div>
   );
 }
@@ -134,16 +173,21 @@ function AuctionsTab() {
   const [listingId, setListingId] = useState("");
   const [start, setStart] = useState("");
   const [inc, setInc] = useState("100");
+  const [mode, setMode] = useState<"days" | "datetime">("days");
   const [days, setDays] = useState("3");
+  const [endsAtLocal, setEndsAtLocal] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     try {
-      const endsAt = new Date(Date.now() + parseFloat(days) * 86400000).toISOString();
+      const endsAt = mode === "days"
+        ? new Date(Date.now() + parseFloat(days) * 86400000).toISOString()
+        : new Date(endsAtLocal).toISOString();
+      if (!endsAt || isNaN(new Date(endsAt).getTime())) throw new Error("Invalid end time");
       await create({ data: { listing_id: listingId, starting_cents: Math.round(parseFloat(start) * 100), min_increment_cents: Math.round(parseFloat(inc) * 100), ends_at: endsAt } });
-      setShow(false); setListingId(""); setStart(""); setInc("100"); setDays("3");
+      setShow(false); setListingId(""); setStart(""); setInc("100"); setDays("3"); setEndsAtLocal("");
       qc.invalidateQueries({ queryKey: ["admin-auctions"] });
       qc.invalidateQueries({ queryKey: ["auctions"] });
     } catch (e: any) { setErr(e?.message ?? "Failed"); }
@@ -170,7 +214,17 @@ function AuctionsTab() {
           </label>
           <label className="text-sm">Starting bid (₹)<input required type="number" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
           <label className="text-sm">Min increment (₹)<input required type="number" value={inc} onChange={(e) => setInc(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
-          <label className="text-sm">Duration (days)<input required type="number" step="0.5" value={days} onChange={(e) => setDays(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
+          <label className="text-sm sm:col-span-2">End time
+            <div className="flex gap-2 mt-1">
+              <select value={mode} onChange={(e) => setMode(e.target.value as any)} className="bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2 text-sm">
+                <option value="days">In N days</option>
+                <option value="datetime">Pick date/time</option>
+              </select>
+              {mode === "days"
+                ? <input required type="number" step="0.5" value={days} onChange={(e) => setDays(e.target.value)} placeholder="Days" className="flex-1 bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" />
+                : <input required type="datetime-local" value={endsAtLocal} onChange={(e) => setEndsAtLocal(e.target.value)} className="flex-1 bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" />}
+            </div>
+          </label>
           {err && <p className="text-destructive text-sm sm:col-span-2">{err}</p>}
           <button type="submit" className="sm:col-span-2 bg-primary text-vault-950 font-semibold py-2.5 rounded-full">Create Auction</button>
         </form>
