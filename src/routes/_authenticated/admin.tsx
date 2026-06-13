@@ -23,6 +23,9 @@ const profileQO = queryOptions({ queryKey: ["my-profile"], queryFn: () => getMyP
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — WheelVault" }] }),
+  validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
+    tab: search.tab === "listings" || search.tab === "auctions" || search.tab === "inquiries" || search.tab === "new" ? search.tab : undefined,
+  }),
   component: AdminPage,
 });
 
@@ -31,7 +34,8 @@ type Tab = "listings" | "auctions" | "inquiries" | "new";
 function AdminPage() {
   const { data: p, isLoading } = useQuery(profileQO);
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("listings");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(search.tab ?? "new");
 
   useEffect(() => {
     if (!isLoading && p && !p.isAdmin) navigate({ to: "/" });
@@ -46,7 +50,7 @@ function AdminPage() {
         <Shield className="size-7 text-primary" />
         <h1 className="font-display font-extrabold text-3xl">Admin Dashboard</h1>
       </div>
-      <p className="text-vault-400 mb-8">Manage your Hot Wheels catalog, auctions, and orders.</p>
+      <p className="text-vault-400 mb-8">Add your Hot Wheels collection with photos, price, stock, featured banners, auctions, and order tracking.</p>
 
       <div className="flex flex-wrap gap-2 mb-8 border-b border-white/5">
         {([
