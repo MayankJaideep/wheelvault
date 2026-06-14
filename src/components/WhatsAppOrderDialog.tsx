@@ -14,6 +14,7 @@ type Props = {
   listingId?: string;
   auctionId?: string;
   isAuthenticated: boolean;
+  itemImageUrl?: string;
 };
 
 export function WhatsAppOrderDialog(props: Props) {
