@@ -153,6 +153,7 @@ function AuctionPage() {
         auctionId={auction.id}
         listingId={l.id}
         isAuthenticated={!!userId}
+        itemImageUrl={l.image_urls?.[0]}
       />
     </div>
   );
