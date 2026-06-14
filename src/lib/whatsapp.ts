@@ -28,6 +28,7 @@ export function buildWhatsappOrderMessage(args: WhatsappOrderArgs): string {
     "",
     `*Item:* ${args.itemTitle}`,
     `*Amount:* ₹${args.amountInr.toLocaleString("en-IN")}`,
+    args.itemImageUrl ? `*Photo:* ${args.itemImageUrl}` : null,
     "",
     "*Buyer Details*",
     `Name: ${args.buyerName}`,
