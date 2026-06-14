@@ -150,9 +150,11 @@ export const getAuctions = createServerFn({ method: "GET" }).handler(async () =>
     .from("auctions")
     .select("*, listings(*)")
     .eq("status", "live")
+    .gt("ends_at", new Date().toISOString())
     .order("ends_at", { ascending: true });
   if (error) throw error;
-  return { auctions: (await signAuctions(data ?? [])) as Auction[] };
+  const rows = (data ?? []).filter((auction: any) => auction.listings);
+  return { auctions: (await signAuctions(rows)) as Auction[] };
 });
 
 export const getAuction = createServerFn({ method: "POST" })
@@ -357,6 +359,25 @@ export const adminDeleteListing = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminAddListingImages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; image_urls: string[] }) => input)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    if (!data.image_urls.length) throw new Error("Upload at least one photo");
+    const { data: listing, error: readError } = await supabase
+      .from("listings")
+      .select("image_urls")
+      .eq("id", data.id)
+      .single();
+    if (readError || !listing) throw new Error("Listing not found");
+    const image_urls = [...((listing.image_urls as string[] | null) ?? []), ...data.image_urls];
+    const { error } = await supabase.from("listings").update({ image_urls }).eq("id", data.id);
+    if (error) throw error;
+    return { image_urls };
+  });
+
 export const adminCreateAuction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: {
@@ -368,6 +389,16 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    const endTime = new Date(data.ends_at).getTime();
+    if (!Number.isFinite(endTime) || endTime <= Date.now()) throw new Error("Auction end time must be in the future");
+    const { data: listing, error: listingError } = await supabase
+      .from("listings")
+      .select("id,status,image_urls")
+      .eq("id", data.listing_id)
+      .single();
+    if (listingError || !listing) throw new Error("Select a valid listing");
+    if (listing.status === "sold") throw new Error("Sold listings cannot be auctioned");
+    if (!listing.image_urls?.length) throw new Error("Upload at least one car photo before starting an auction");
     const { data: auction, error } = await supabase
       .from("auctions")
       .insert({
@@ -381,7 +412,7 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw error;
-    await supabase.from("listings").update({ sale_type: "auction" }).eq("id", data.listing_id);
+    await supabase.from("listings").update({ sale_type: "auction", status: "active" }).eq("id", data.listing_id);
     return { auction };
   });
 
