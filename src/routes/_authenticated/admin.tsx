@@ -175,7 +175,6 @@ function AuctionsTab() {
   const addImages = useServerFn(adminAddListingImages);
   const { data: lsData } = useQuery(allQO);
   const listings = (lsData?.listings ?? []).filter((l) => l.status !== "sold");
-  const selectedListing = listings.find((l) => l.id === listingId);
   const [show, setShow] = useState(false);
   const [listingId, setListingId] = useState("");
   const [start, setStart] = useState("");
@@ -186,6 +185,7 @@ function AuctionsTab() {
   const [addedPhotoCounts, setAddedPhotoCounts] = useState<Record<string, number>>({});
   const [uploadingAuctionPhotos, setUploadingAuctionPhotos] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const selectedListing = listings.find((l) => l.id === listingId);
   const selectedHasPhotos = !!selectedListing && ((selectedListing.image_urls?.length ?? 0) + (addedPhotoCounts[listingId] ?? 0) > 0);
 
   async function onAuctionFiles(files: FileList | null) {
