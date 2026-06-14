@@ -172,7 +172,7 @@ function AuctionsTab() {
   const end = useServerFn(adminEndAuction);
   const create = useServerFn(adminCreateAuction);
   const { data: lsData } = useQuery(allQO);
-  const listings = (lsData?.listings ?? []).filter((l) => l.status === "active");
+  const listings = (lsData?.listings ?? []).filter((l) => l.status !== "sold");
   const [show, setShow] = useState(false);
   const [listingId, setListingId] = useState("");
   const [start, setStart] = useState("");

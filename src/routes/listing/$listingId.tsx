@@ -105,6 +105,7 @@ function ListingPage() {
         amountCents={l.price_cents}
         listingId={l.id}
         isAuthenticated={authed}
+        itemImageUrl={l.image_urls?.[0]}
       />
     </div>
   );
