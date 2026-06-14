@@ -8,6 +8,7 @@ import {
   adminCreateListing,
   adminUpdateListing,
   adminDeleteListing,
+  adminAddListingImages,
   adminCreateAuction,
   adminEndAuction,
   adminGetAuctions,
@@ -171,8 +172,10 @@ function AuctionsTab() {
   const qc = useQueryClient();
   const end = useServerFn(adminEndAuction);
   const create = useServerFn(adminCreateAuction);
+  const addImages = useServerFn(adminAddListingImages);
   const { data: lsData } = useQuery(allQO);
   const listings = (lsData?.listings ?? []).filter((l) => l.status !== "sold");
+  const selectedListing = listings.find((l) => l.id === listingId);
   const [show, setShow] = useState(false);
   const [listingId, setListingId] = useState("");
   const [start, setStart] = useState("");
@@ -180,12 +183,31 @@ function AuctionsTab() {
   const [mode, setMode] = useState<"days" | "datetime">("days");
   const [days, setDays] = useState("3");
   const [endsAtLocal, setEndsAtLocal] = useState("");
+  const [addedPhotoCounts, setAddedPhotoCounts] = useState<Record<string, number>>({});
+  const [uploadingAuctionPhotos, setUploadingAuctionPhotos] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const selectedHasPhotos = !!selectedListing && ((selectedListing.image_urls?.length ?? 0) + (addedPhotoCounts[listingId] ?? 0) > 0);
+
+  async function onAuctionFiles(files: FileList | null) {
+    if (!listingId) { setErr("Select a listing before uploading photos"); return; }
+    if (!files || files.length === 0) return;
+    setErr(null); setUploadingAuctionPhotos(true);
+    try {
+      const image_urls: string[] = [];
+      for (const file of Array.from(files)) image_urls.push(await uploadListingImage(file));
+      await addImages({ data: { id: listingId, image_urls } });
+      setAddedPhotoCounts((prev) => ({ ...prev, [listingId]: (prev[listingId] ?? 0) + image_urls.length }));
+      qc.invalidateQueries({ queryKey: ["listings"] });
+    } catch (e: any) { setErr(e?.message ?? "Photo upload failed"); }
+    finally { setUploadingAuctionPhotos(false); }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     try {
+      if (!listingId) throw new Error("Select a listing");
+      if (!selectedHasPhotos) throw new Error("Upload at least one car photo before starting an auction");
       const endsAt = mode === "days"
         ? new Date(Date.now() + parseFloat(days) * 86400000).toISOString()
         : new Date(endsAtLocal).toISOString();
