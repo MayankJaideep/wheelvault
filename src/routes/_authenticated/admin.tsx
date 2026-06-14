@@ -8,6 +8,7 @@ import {
   adminCreateListing,
   adminUpdateListing,
   adminDeleteListing,
+  adminAddListingImages,
   adminCreateAuction,
   adminEndAuction,
   adminGetAuctions,
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type Tab = "listings" | "auctions" | "inquiries" | "new";
 
 function AdminPage() {
-  const { data: p, isLoading } = useQuery(profileQO);
+  const { data: p, isLoading, isFetching } = useQuery(profileQO);
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<Tab>(search.tab ?? "new");
@@ -41,7 +42,7 @@ function AdminPage() {
     if (!isLoading && p && !p.isAdmin) navigate({ to: "/" });
   }, [p, isLoading, navigate]);
 
-  if (isLoading) return <div className="p-12 text-center">Loading…</div>;
+  if (!p && (isLoading || isFetching)) return <div className="p-12 text-center">Loading…</div>;
   if (!p?.isAdmin) return <div className="p-12 text-center text-vault-400">Admins only.</div>;
 
   return (
@@ -171,6 +172,7 @@ function AuctionsTab() {
   const qc = useQueryClient();
   const end = useServerFn(adminEndAuction);
   const create = useServerFn(adminCreateAuction);
+  const addImages = useServerFn(adminAddListingImages);
   const { data: lsData } = useQuery(allQO);
   const listings = (lsData?.listings ?? []).filter((l) => l.status !== "sold");
   const [show, setShow] = useState(false);
@@ -180,12 +182,32 @@ function AuctionsTab() {
   const [mode, setMode] = useState<"days" | "datetime">("days");
   const [days, setDays] = useState("3");
   const [endsAtLocal, setEndsAtLocal] = useState("");
+  const [addedPhotoCounts, setAddedPhotoCounts] = useState<Record<string, number>>({});
+  const [uploadingAuctionPhotos, setUploadingAuctionPhotos] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const selectedListing = listings.find((l) => l.id === listingId);
+  const selectedHasPhotos = !!selectedListing && ((selectedListing.image_urls?.length ?? 0) + (addedPhotoCounts[listingId] ?? 0) > 0);
+
+  async function onAuctionFiles(files: FileList | null) {
+    if (!listingId) { setErr("Select a listing before uploading photos"); return; }
+    if (!files || files.length === 0) return;
+    setErr(null); setUploadingAuctionPhotos(true);
+    try {
+      const image_urls: string[] = [];
+      for (const file of Array.from(files)) image_urls.push(await uploadListingImage(file));
+      await addImages({ data: { id: listingId, image_urls } });
+      setAddedPhotoCounts((prev) => ({ ...prev, [listingId]: (prev[listingId] ?? 0) + image_urls.length }));
+      qc.invalidateQueries({ queryKey: ["listings"] });
+    } catch (e: any) { setErr(e?.message ?? "Photo upload failed"); }
+    finally { setUploadingAuctionPhotos(false); }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     try {
+      if (!listingId) throw new Error("Select a listing");
+      if (!selectedHasPhotos) throw new Error("Upload at least one car photo before starting an auction");
       const endsAt = mode === "days"
         ? new Date(Date.now() + parseFloat(days) * 86400000).toISOString()
         : new Date(endsAtLocal).toISOString();
@@ -216,6 +238,16 @@ function AuctionsTab() {
               {listings.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
             </select>
           </label>
+          {listingId && !selectedHasPhotos && (
+            <div className="sm:col-span-2 bg-vault-950/70 ring-1 ring-primary/30 rounded-lg p-4">
+              <p className="text-sm font-semibold text-primary mb-1">Add car photos before starting this auction</p>
+              <p className="text-xs text-vault-400 mb-3">Auctions must show at least one real photo so buyers can bid confidently.</p>
+              <label className="inline-flex items-center gap-2 bg-primary text-vault-950 px-4 py-2 rounded-full font-semibold text-sm cursor-pointer">
+                <ImageIcon className="size-4" /> {uploadingAuctionPhotos ? "Uploading…" : "Upload auction photos"}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => onAuctionFiles(e.target.files)} />
+              </label>
+            </div>
+          )}
           <label className="text-sm">Starting bid (₹)<input required type="number" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
           <label className="text-sm">Min increment (₹)<input required type="number" value={inc} onChange={(e) => setInc(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
           <label className="text-sm sm:col-span-2">End time
@@ -230,7 +262,7 @@ function AuctionsTab() {
             </div>
           </label>
           {err && <p className="text-destructive text-sm sm:col-span-2">{err}</p>}
-          <button type="submit" className="sm:col-span-2 bg-primary text-vault-950 font-semibold py-2.5 rounded-full">Create Auction</button>
+          <button type="submit" disabled={!!listingId && !selectedHasPhotos} className="sm:col-span-2 bg-primary text-vault-950 font-semibold py-2.5 rounded-full disabled:opacity-50 disabled:cursor-not-allowed">Create Auction</button>
         </form>
       )}
 

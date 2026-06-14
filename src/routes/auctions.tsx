@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, queryOptions } from "@tanstack/react-query";
+import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getAuctions } from "@/lib/marketplace.functions";
 import { formatINR, formatTimeLeft } from "@/lib/format";
@@ -15,10 +15,10 @@ export const Route = createFileRoute("/auctions")({
 });
 
 function AuctionsPage() {
-  const { data } = useQuery(qo);
+  const { data } = useSuspenseQuery(qo);
   const auctions = data?.auctions ?? [];
   const [, force] = useState(0);
-  useEffect(() => { const i = setInterval(() => force((n) => n + 1), 1000); return () => clearInterval(i); }, []);
+  useEffect(() => { const i = setInterval(() => force((n) => n + 1), 30_000); return () => clearInterval(i); }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
