@@ -66,8 +66,19 @@ export function WhatsAppOrderDialog(props: Props) {
         pincode,
         notes,
         refId: inquiry.id.slice(0, 8),
+        itemImageUrl: props.itemImageUrl,
       });
-      window.open(url, "_blank");
+      // Mobile-friendly: use an anchor click so iOS/Android hand off to the WhatsApp app.
+      // window.open after async work is blocked by mobile popup blockers.
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Fallback for browsers that ignore the synthetic click after await
+      setTimeout(() => { if (document.visibilityState === "visible") window.location.href = url; }, 400);
       props.onClose();
     } catch (err: any) {
       setError(err?.message ?? "Could not submit. Please try again.");
