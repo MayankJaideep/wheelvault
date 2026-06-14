@@ -12,6 +12,7 @@ export type WhatsappOrderArgs = {
   pincode?: string;
   notes?: string;
   refId?: string;
+  itemImageUrl?: string;
 };
 
 export function buildWhatsappOrderMessage(args: WhatsappOrderArgs): string {
