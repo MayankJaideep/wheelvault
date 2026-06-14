@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 type Tab = "listings" | "auctions" | "inquiries" | "new";
 
 function AdminPage() {
-  const { data: p, isLoading } = useQuery(profileQO);
+  const { data: p, isLoading, isFetching } = useQuery(profileQO);
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [tab, setTab] = useState<Tab>(search.tab ?? "new");
@@ -42,7 +42,7 @@ function AdminPage() {
     if (!isLoading && p && !p.isAdmin) navigate({ to: "/" });
   }, [p, isLoading, navigate]);
 
-  if (isLoading) return <div className="p-12 text-center">Loading…</div>;
+  if (!p && (isLoading || isFetching)) return <div className="p-12 text-center">Loading…</div>;
   if (!p?.isAdmin) return <div className="p-12 text-center text-vault-400">Admins only.</div>;
 
   return (
