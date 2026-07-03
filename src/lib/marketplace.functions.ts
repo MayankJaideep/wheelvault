@@ -83,8 +83,9 @@ async function signPathMap(paths: string[]): Promise<Map<string, string>> {
       .createSignedUrls(storagePaths, SIGNED_URL_TTL);
 
     if (!error) {
-      for (const row of data ?? []) {
-        if (row.path && row.signedUrl) urlMap.set(row.path, row.signedUrl);
+      for (const [index, row] of (data ?? []).entries()) {
+        const originalPath = row.path ?? storagePaths[index];
+        if (originalPath && row.signedUrl) urlMap.set(originalPath, row.signedUrl);
       }
     }
   }
