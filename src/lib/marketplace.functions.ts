@@ -127,9 +127,26 @@ async function signAuctions(rows: any[]): Promise<any[]> {
   }));
 }
 
+async function reconcileEndedAuctions(supabaseAdmin: any) {
+  const now = new Date().toISOString();
+  await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", now);
+
+  const [{ data: inactiveAuctions }, { data: liveAuctions }] = await Promise.all([
+    supabaseAdmin.from("auctions").select("listing_id").or(`status.neq.live,ends_at.lte.${now}`),
+    supabaseAdmin.from("auctions").select("listing_id").eq("status", "live").gt("ends_at", now),
+  ]);
+
+  const liveIds = new Set((liveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean));
+  const staleIds = Array.from(new Set((inactiveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean))).filter((id) => !liveIds.has(id));
+  if (staleIds.length > 0) {
+    await supabaseAdmin.from("listings").update({ sale_type: "fixed" }).in("id", staleIds).eq("sale_type", "auction");
+  }
+}
+
 // ---------- PUBLIC LISTINGS ----------
 export const getListings = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -142,6 +159,7 @@ export const getListings = createServerFn({ method: "GET" }).handler(async () =>
 
 export const getFeaturedListings = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -155,6 +173,7 @@ export const getFeaturedListings = createServerFn({ method: "GET" }).handler(asy
 
 export const getBanners = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -169,6 +188,7 @@ export const getListing = createServerFn({ method: "POST" })
   .inputValidator((id: string) => id)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileEndedAuctions(supabaseAdmin);
     const { data: listing, error } = await supabaseAdmin.from("listings").select("*").eq("id", data).single();
     if (error) throw error;
     const [signed] = await signListings([listing as Listing]);
@@ -187,7 +207,7 @@ export const getListing = createServerFn({ method: "POST" })
 // ---------- PUBLIC AUCTIONS ----------
 export const getAuctions = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", new Date().toISOString());
+  await reconcileEndedAuctions(supabaseAdmin);
   const recentCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabaseAdmin
     .from("auctions")
@@ -212,6 +232,7 @@ export const getAuction = createServerFn({ method: "POST" })
   .inputValidator((id: string) => id)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileEndedAuctions(supabaseAdmin);
     const { data: auction, error } = await supabaseAdmin
       .from("auctions")
       .select("*, listings(*)")
