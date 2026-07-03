@@ -278,7 +278,7 @@ export const createInquiry = createServerFn({ method: "POST" })
     const buyerAddress = data.buyer_address?.trim();
     const buyerPincode = data.buyer_pincode?.trim();
     const notes = data.notes?.trim();
-    const phoneDigits = buyerPhone.replace(/\D/g, "");
+    const phoneDigits = buyerPhone?.replace(/\D/g, "") ?? "";
 
     if (!buyerName || !buyerPhone || !buyerAddress) throw new Error("Name, phone and address are required");
     if (buyerName.length > 120 || buyerAddress.length > 800 || (notes?.length ?? 0) > 500) throw new Error("Please shorten the details and try again");
