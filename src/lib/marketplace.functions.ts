@@ -186,6 +186,7 @@ export const getListing = createServerFn({ method: "POST" })
 // ---------- PUBLIC AUCTIONS ----------
 export const getAuctions = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", new Date().toISOString());
   const recentCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabaseAdmin
     .from("auctions")
@@ -246,16 +247,25 @@ export const placeBid = createServerFn({ method: "POST" })
     if (data.amount_cents < minNext) {
       throw new Error(`Bid must be at least ₹${(minNext / 100).toLocaleString("en-IN")}`);
     }
-    const { error: bidErr } = await supabaseAdmin.from("bids").insert({
+    const { data: bid, error: bidErr } = await supabaseAdmin.from("bids").insert({
       auction_id: data.auction_id,
       bidder_id: userId,
       amount_cents: data.amount_cents,
-    });
+    }).select("id").single();
     if (bidErr) throw bidErr;
-    await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("auctions")
       .update({ current_bid_cents: data.amount_cents, leading_bidder_id: userId })
-      .eq("id", data.auction_id);
+      .eq("id", data.auction_id)
+      .eq("status", "live")
+      .eq("current_bid_cents", auction.current_bid_cents)
+      .gt("ends_at", new Date().toISOString())
+      .select("id")
+      .maybeSingle();
+    if (updateError || !updated) {
+      if (bid?.id) await supabaseAdmin.from("bids").delete().eq("id", bid.id);
+      throw new Error("Another bidder just placed a bid. Refresh and bid again.");
+    }
     return { ok: true, current_bid_cents: data.amount_cents };
   });
 
@@ -542,6 +552,7 @@ export const adminGetAuctions = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    await supabase.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", new Date().toISOString());
     const { data, error } = await supabase
       .from("auctions")
       .select("*, listings(title, image_urls)")

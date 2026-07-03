@@ -48,3 +48,8 @@ export function whatsappOrderUrl(args: WhatsappOrderArgs): string {
   const message = encodeURIComponent(buildWhatsappOrderMessage(args));
   return `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${message}`;
 }
+
+export function whatsappDirectUrl(phoneDigits = WHATSAPP_NUMBER, message?: string): string {
+  const phone = phoneDigits.replace(/\D/g, "");
+  return `https://api.whatsapp.com/send?phone=${phone}${message ? `&text=${encodeURIComponent(message)}` : ""}`;
+}
