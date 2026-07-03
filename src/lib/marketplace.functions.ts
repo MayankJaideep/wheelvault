@@ -68,7 +68,7 @@ function isExternalUrl(path: string) {
 }
 
 async function signPathMap(paths: string[]): Promise<Map<string, string>> {
-  if (!paths || paths.length === 0) return [];
+  if (!paths || paths.length === 0) return new Map<string, string>();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const urlMap = new Map<string, string>();
   const storagePaths = Array.from(new Set(paths.filter((p) => p && !isExternalUrl(p))));
