@@ -32,7 +32,7 @@ function Home() {
   const { data: auctions } = useQuery(auctionsQO);
   const { data: all } = useQuery(allQO);
   const featuredItems = featured?.listings ?? [];
-  const auctionItems = auctions?.auctions ?? [];
+  const auctionItems = (auctions?.auctions ?? []).filter((a: any) => a.status === "live" && new Date(a.ends_at).getTime() > Date.now());
   const allItems = all?.listings ?? [];
 
   return (
@@ -223,7 +223,7 @@ function EmptyVault() {
       <div className="size-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-display font-black italic text-2xl">HW</div>
       <h3 className="font-display font-bold text-2xl mb-3">The vault is being stocked.</h3>
       <p className="text-vault-400 leading-relaxed">New Hot Wheels drops are being added by the seller. Check back shortly, or follow on WhatsApp for instant alerts.</p>
-      <a href="https://wa.me/917483595994" target="_blank" rel="noopener noreferrer" className="inline-flex mt-6 items-center gap-2 bg-[#25D366] text-black px-5 py-2.5 rounded-full font-semibold">
+      <a href="https://api.whatsapp.com/send?phone=917483595994" target="_blank" rel="noopener noreferrer" className="inline-flex mt-6 items-center gap-2 bg-[#25D366] text-black px-5 py-2.5 rounded-full font-semibold">
         <MessageCircle className="size-4" /> WhatsApp the Seller
       </a>
     </section>

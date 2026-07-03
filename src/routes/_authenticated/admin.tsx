@@ -216,6 +216,7 @@ function AuctionsTab() {
       setShow(false); setListingId(""); setStart(""); setInc("100"); setDays("3"); setEndsAtLocal("");
       qc.invalidateQueries({ queryKey: ["admin-auctions"] });
       qc.invalidateQueries({ queryKey: ["auctions"] });
+      qc.invalidateQueries({ queryKey: ["listings"] });
     } catch (e: any) { setErr(e?.message ?? "Failed"); }
   }
   async function endIt(id: string) {
@@ -223,6 +224,7 @@ function AuctionsTab() {
     await end({ data: id });
     qc.invalidateQueries({ queryKey: ["admin-auctions"] });
     qc.invalidateQueries({ queryKey: ["auctions"] });
+    qc.invalidateQueries({ queryKey: ["listings"] });
   }
 
   return (
@@ -315,7 +317,7 @@ function InquiriesTab() {
             </div>
           </div>
           <div className="flex gap-2 mt-3 flex-wrap">
-            <a href={`https://wa.me/${i.buyer_phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-[#25D366]/20 text-[#25D366] px-3 py-1.5 rounded-full font-semibold">WhatsApp buyer</a>
+            <a href={`https://api.whatsapp.com/send?phone=${i.buyer_phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="text-xs bg-[#25D366]/20 text-[#25D366] px-3 py-1.5 rounded-full font-semibold">WhatsApp buyer</a>
             <button onClick={() => mark(i.id, "confirmed")} className="text-xs bg-vault-950 ring-1 ring-white/10 px-3 py-1.5 rounded-full">Mark confirmed</button>
             <button onClick={() => mark(i.id, "shipped")} className="text-xs bg-vault-950 ring-1 ring-white/10 px-3 py-1.5 rounded-full">Mark shipped</button>
             <button onClick={() => mark(i.id, "completed")} className="text-xs bg-vault-950 ring-1 ring-white/10 px-3 py-1.5 rounded-full">Completed</button>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useNavigate } from "@tanstack/react-router";
 import { createInquiry } from "@/lib/marketplace.functions";
 import { whatsappOrderUrl } from "@/lib/whatsapp";
 import { MessageCircle, X } from "lucide-react";
@@ -19,7 +18,6 @@ type Props = {
 
 export function WhatsAppOrderDialog(props: Props) {
   const create = useServerFn(createInquiry);
-  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -33,14 +31,24 @@ export function WhatsAppOrderDialog(props: Props) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!props.isAuthenticated) {
-      navigate({ to: "/auth" });
-      return;
-    }
     if (!name.trim() || !phone.trim() || !address.trim()) {
       setError("Name, phone and address are required");
       return;
     }
+    const fallbackRef = `${props.kind}-${Date.now().toString(36)}`;
+    const immediateUrl = whatsappOrderUrl({
+      kind: props.kind,
+      itemTitle: props.itemTitle,
+      amountInr: Math.round(props.amountCents / 100),
+      buyerName: name.trim(),
+      buyerPhone: phone.trim(),
+      buyerAddress: address.trim(),
+      pincode: pincode.trim(),
+      notes: notes.trim(),
+      refId: fallbackRef,
+      itemImageUrl: props.itemImageUrl,
+    });
+    const pendingWindow = window.open(immediateUrl, "_blank", "noopener,noreferrer");
     setSubmitting(true);
     try {
       const { inquiry } = await create({
@@ -56,32 +64,24 @@ export function WhatsAppOrderDialog(props: Props) {
           notes: notes.trim() || undefined,
         },
       });
-      const url = whatsappOrderUrl({
+      const confirmedUrl = whatsappOrderUrl({
         kind: props.kind,
         itemTitle: props.itemTitle,
         amountInr: Math.round(props.amountCents / 100),
-        buyerName: name,
-        buyerPhone: phone,
-        buyerAddress: address,
-        pincode,
-        notes,
+        buyerName: name.trim(),
+        buyerPhone: phone.trim(),
+        buyerAddress: address.trim(),
+        pincode: pincode.trim(),
+        notes: notes.trim(),
         refId: inquiry.id.slice(0, 8),
         itemImageUrl: props.itemImageUrl,
       });
-      // Mobile-friendly: use an anchor click so iOS/Android hand off to the WhatsApp app.
-      // window.open after async work is blocked by mobile popup blockers.
-      const a = document.createElement("a");
-      a.href = url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Fallback for browsers that ignore the synthetic click after await
-      setTimeout(() => { if (document.visibilityState === "visible") window.location.href = url; }, 400);
+      if (pendingWindow && !pendingWindow.closed) pendingWindow.location.href = confirmedUrl;
+      else window.location.href = confirmedUrl;
       props.onClose();
     } catch (err: any) {
-      setError(err?.message ?? "Could not submit. Please try again.");
+      if (!pendingWindow || pendingWindow.closed) window.location.href = immediateUrl;
+      props.onClose();
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +121,7 @@ export function WhatsAppOrderDialog(props: Props) {
             {submitting ? "Submitting…" : "Send via WhatsApp"}
           </button>
           <p className="text-[11px] text-vault-500 text-center">
-            We'll save your details and open WhatsApp with a pre-filled order message for the seller. Payment & shipping are confirmed there.
+            No login is required. We'll save your details and open WhatsApp with a pre-filled order message for the seller. Payment & shipping are confirmed there.
           </p>
         </form>
       </div>

@@ -52,7 +52,7 @@ function ProfilePage() {
       <div className="mt-12 bg-vault-900/60 ring-1 ring-white/5 rounded-xl p-5 flex items-center gap-4">
         <MessageCircle className="size-6 text-[#25D366] shrink-0" />
         <div className="text-sm text-vault-300">
-          Questions about an order or shipment? <a href="https://wa.me/917483595994" target="_blank" rel="noopener noreferrer" className="text-[#25D366] font-semibold">WhatsApp +91 74835 95994</a>
+          Questions about an order or shipment? <a href="https://api.whatsapp.com/send?phone=917483595994" target="_blank" rel="noopener noreferrer" className="text-[#25D366] font-semibold">WhatsApp +91 74835 95994</a>
         </div>
       </div>
     </div>

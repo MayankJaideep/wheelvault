@@ -63,41 +63,90 @@ export type Inquiry = {
 };
 
 // ------ image signing helpers (server-only) ------
-async function signPaths(paths: string[]): Promise<string[]> {
-  if (!paths || paths.length === 0) return [];
+function isExternalUrl(path: string) {
+  return path.startsWith("http://") || path.startsWith("https://");
+}
+
+async function signPathMap(paths: string[]): Promise<Map<string, string>> {
+  if (!paths || paths.length === 0) return new Map<string, string>();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  // External URLs (legacy) pass through; storage paths get signed.
-  const out: string[] = [];
-  for (const p of paths) {
-    if (!p) continue;
-    if (p.startsWith("http://") || p.startsWith("https://")) {
-      out.push(p);
-      continue;
-    }
-    const { data } = await supabaseAdmin.storage.from("listing-images").createSignedUrl(p, SIGNED_URL_TTL);
-    if (data?.signedUrl) out.push(data.signedUrl);
+  const urlMap = new Map<string, string>();
+  const storagePaths = Array.from(new Set(paths.filter((p) => p && !isExternalUrl(p))));
+
+  for (const path of paths) {
+    if (path && isExternalUrl(path)) urlMap.set(path, path);
   }
-  return out;
+
+  if (storagePaths.length > 0) {
+    const { data, error } = await supabaseAdmin.storage
+      .from("listing-images")
+      .createSignedUrls(storagePaths, SIGNED_URL_TTL);
+
+    if (!error) {
+      for (const [index, row] of (data ?? []).entries()) {
+        const originalPath = row.path ?? storagePaths[index];
+        if (originalPath && row.signedUrl) urlMap.set(originalPath, row.signedUrl);
+      }
+    }
+  }
+
+  return urlMap;
+}
+
+async function signPaths(paths: string[]): Promise<string[]> {
+  const signedMap = await signPathMap(paths);
+
+  return paths
+    .filter(Boolean)
+    .map((p) => signedMap.get(p))
+    .filter(Boolean) as string[];
 }
 
 async function signListings<T extends { image_urls: string[] | null }>(rows: T[]): Promise<T[]> {
-  return Promise.all(
-    rows.map(async (r) => ({ ...r, image_urls: await signPaths(r.image_urls ?? []) })),
-  );
+  const allPaths = Array.from(new Set(rows.flatMap((r) => r.image_urls ?? [])));
+  const signedMap = await signPathMap(allPaths);
+
+  return rows.map((r) => ({
+    ...r,
+    image_urls: (r.image_urls ?? []).map((path) => signedMap.get(path)).filter(Boolean) as string[],
+  }));
 }
 
 async function signAuctions(rows: any[]): Promise<any[]> {
-  return Promise.all(
-    rows.map(async (r) => ({
-      ...r,
-      listings: r.listings ? { ...r.listings, image_urls: await signPaths(r.listings.image_urls ?? []) } : r.listings,
-    })),
-  );
+  const allPaths = Array.from(new Set(rows.flatMap((r) => r.listings?.image_urls ?? [])));
+  const signedMap = await signPathMap(allPaths);
+
+  return rows.map((r) => ({
+    ...r,
+    listings: r.listings
+      ? {
+          ...r.listings,
+          image_urls: (r.listings.image_urls ?? []).map((path: string) => signedMap.get(path)).filter(Boolean),
+        }
+      : r.listings,
+  }));
+}
+
+async function reconcileEndedAuctions(supabaseAdmin: any) {
+  const now = new Date().toISOString();
+  await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", now);
+
+  const [{ data: inactiveAuctions }, { data: liveAuctions }] = await Promise.all([
+    supabaseAdmin.from("auctions").select("listing_id").or(`status.neq.live,ends_at.lte.${now}`),
+    supabaseAdmin.from("auctions").select("listing_id").eq("status", "live").gt("ends_at", now),
+  ]);
+
+  const liveIds = new Set((liveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean));
+  const staleIds = Array.from(new Set((inactiveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean))).filter((id) => !liveIds.has(id));
+  if (staleIds.length > 0) {
+    await supabaseAdmin.from("listings").update({ sale_type: "fixed" }).in("id", staleIds).eq("sale_type", "auction");
+  }
 }
 
 // ---------- PUBLIC LISTINGS ----------
 export const getListings = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -110,6 +159,7 @@ export const getListings = createServerFn({ method: "GET" }).handler(async () =>
 
 export const getFeaturedListings = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -123,6 +173,7 @@ export const getFeaturedListings = createServerFn({ method: "GET" }).handler(asy
 
 export const getBanners = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("*")
@@ -137,23 +188,43 @@ export const getListing = createServerFn({ method: "POST" })
   .inputValidator((id: string) => id)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileEndedAuctions(supabaseAdmin);
     const { data: listing, error } = await supabaseAdmin.from("listings").select("*").eq("id", data).single();
     if (error) throw error;
     const [signed] = await signListings([listing as Listing]);
-    return { listing: signed };
+    const { data: auctionRows } = await supabaseAdmin
+      .from("auctions")
+      .select("*, listings(*)")
+      .eq("listing_id", data)
+      .eq("status", "live")
+      .gt("ends_at", new Date().toISOString())
+      .order("ends_at", { ascending: true })
+      .limit(1);
+    const [activeAuction] = await signAuctions(auctionRows ?? []);
+    return { listing: signed, auction: activeAuction ?? null };
   });
 
 // ---------- PUBLIC AUCTIONS ----------
 export const getAuctions = createServerFn({ method: "GET" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await reconcileEndedAuctions(supabaseAdmin);
+  const recentCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabaseAdmin
     .from("auctions")
     .select("*, listings(*)")
-    .eq("status", "live")
-    .gt("ends_at", new Date().toISOString())
+    .in("status", ["live", "ended"])
+    .gte("ends_at", recentCutoff)
     .order("ends_at", { ascending: true });
   if (error) throw error;
-  const rows = (data ?? []).filter((auction: any) => auction.listings);
+  const rows = (data ?? [])
+    .filter((auction: any) => auction.listings)
+    .sort((a: any, b: any) => {
+      const now = Date.now();
+      const aLive = a.status === "live" && new Date(a.ends_at).getTime() > now;
+      const bLive = b.status === "live" && new Date(b.ends_at).getTime() > now;
+      if (aLive !== bLive) return aLive ? -1 : 1;
+      return new Date(a.ends_at).getTime() - new Date(b.ends_at).getTime();
+    });
   return { auctions: (await signAuctions(rows)) as Auction[] };
 });
 
@@ -161,6 +232,7 @@ export const getAuction = createServerFn({ method: "POST" })
   .inputValidator((id: string) => id)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await reconcileEndedAuctions(supabaseAdmin);
     const { data: auction, error } = await supabaseAdmin
       .from("auctions")
       .select("*, listings(*)")
@@ -183,6 +255,7 @@ export const placeBid = createServerFn({ method: "POST" })
   .inputValidator((input: { auction_id: string; amount_cents: number }) => input)
   .handler(async ({ data, context }) => {
     const { userId } = context;
+    if (!Number.isSafeInteger(data.amount_cents) || data.amount_cents <= 0) throw new Error("Enter a valid bid amount");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: auction, error: aErr } = await supabaseAdmin
       .from("auctions")
@@ -196,22 +269,30 @@ export const placeBid = createServerFn({ method: "POST" })
     if (data.amount_cents < minNext) {
       throw new Error(`Bid must be at least ₹${(minNext / 100).toLocaleString("en-IN")}`);
     }
-    const { error: bidErr } = await supabaseAdmin.from("bids").insert({
+    const { data: bid, error: bidErr } = await supabaseAdmin.from("bids").insert({
       auction_id: data.auction_id,
       bidder_id: userId,
       amount_cents: data.amount_cents,
-    });
+    }).select("id").single();
     if (bidErr) throw bidErr;
-    await supabaseAdmin
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from("auctions")
       .update({ current_bid_cents: data.amount_cents, leading_bidder_id: userId })
-      .eq("id", data.auction_id);
+      .eq("id", data.auction_id)
+      .eq("status", "live")
+      .eq("current_bid_cents", auction.current_bid_cents)
+      .gt("ends_at", new Date().toISOString())
+      .select("id")
+      .maybeSingle();
+    if (updateError || !updated) {
+      if (bid?.id) await supabaseAdmin.from("bids").delete().eq("id", bid.id);
+      throw new Error("Another bidder just placed a bid. Refresh and bid again.");
+    }
     return { ok: true, current_bid_cents: data.amount_cents };
   });
 
 // ---------- INQUIRIES (WhatsApp lead capture) ----------
 export const createInquiry = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: {
     listing_id?: string;
     auction_id?: string;
@@ -223,29 +304,50 @@ export const createInquiry = createServerFn({ method: "POST" })
     amount_cents?: number;
     notes?: string;
   }) => input)
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: row, error } = await supabase
+  .handler(async ({ data }) => {
+    const buyerName = data.buyer_name?.trim();
+    const buyerPhone = data.buyer_phone?.trim();
+    const buyerAddress = data.buyer_address?.trim();
+    const buyerPincode = data.buyer_pincode?.trim();
+    const notes = data.notes?.trim();
+    const phoneDigits = buyerPhone?.replace(/\D/g, "") ?? "";
+
+    if (!buyerName || !buyerPhone || !buyerAddress) throw new Error("Name, phone and address are required");
+    if (buyerName.length > 120 || buyerAddress.length > 800 || (notes?.length ?? 0) > 500) throw new Error("Please shorten the details and try again");
+    if (phoneDigits.length < 10 || phoneDigits.length > 15) throw new Error("Enter a valid phone number");
+    if (data.amount_cents != null && (!Number.isSafeInteger(data.amount_cents) || data.amount_cents < 0)) throw new Error("Invalid amount");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.listing_id) {
+      const { data: listing, error: listingError } = await supabaseAdmin
+        .from("listings")
+        .select("id,status")
+        .eq("id", data.listing_id)
+        .single();
+      if (listingError || !listing) throw new Error("Listing not found");
+      if (listing.status === "sold") throw new Error("This item is already sold");
+    }
+
+    const { data: row, error } = await supabaseAdmin
       .from("inquiries")
       .insert({
-        user_id: userId,
+        user_id: null,
         listing_id: data.listing_id ?? null,
         auction_id: data.auction_id ?? null,
         kind: data.kind,
-        buyer_name: data.buyer_name,
-        buyer_phone: data.buyer_phone,
-        buyer_address: data.buyer_address,
-        buyer_pincode: data.buyer_pincode ?? null,
+        buyer_name: buyerName,
+        buyer_phone: buyerPhone,
+        buyer_address: buyerAddress,
+        buyer_pincode: buyerPincode || null,
         amount_cents: data.amount_cents ?? null,
-        notes: data.notes ?? null,
+        notes: notes || null,
       })
       .select()
       .single();
     if (error) throw error;
     // Mark listing as reserved if a buy/reserve was placed
     if (data.kind !== "auction_win" && data.listing_id) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("listings").update({ status: "reserved" }).eq("id", data.listing_id);
+      await supabaseAdmin.from("listings").update({ status: "reserved" }).eq("id", data.listing_id).neq("status", "sold");
     }
     return { inquiry: row as Inquiry };
   });
@@ -389,6 +491,8 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    if (!Number.isSafeInteger(data.starting_cents) || data.starting_cents <= 0) throw new Error("Enter a valid starting bid");
+    if (!Number.isSafeInteger(data.min_increment_cents) || data.min_increment_cents <= 0) throw new Error("Enter a valid minimum increment");
     const endTime = new Date(data.ends_at).getTime();
     if (!Number.isFinite(endTime) || endTime <= Date.now()) throw new Error("Auction end time must be in the future");
     const { data: listing, error: listingError } = await supabase
@@ -399,6 +503,14 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
     if (listingError || !listing) throw new Error("Select a valid listing");
     if (listing.status === "sold") throw new Error("Sold listings cannot be auctioned");
     if (!listing.image_urls?.length) throw new Error("Upload at least one car photo before starting an auction");
+    const { data: existingLive } = await supabase
+      .from("auctions")
+      .select("id")
+      .eq("listing_id", data.listing_id)
+      .eq("status", "live")
+      .gt("ends_at", new Date().toISOString())
+      .limit(1);
+    if ((existingLive ?? []).length > 0) throw new Error("This listing already has a live auction");
     const { data: auction, error } = await supabase
       .from("auctions")
       .insert({
@@ -422,7 +534,14 @@ export const adminEndAuction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    const { data: auction, error: readError } = await supabase
+      .from("auctions")
+      .select("listing_id")
+      .eq("id", data)
+      .single();
+    if (readError || !auction) throw new Error("Auction not found");
     await supabase.from("auctions").update({ status: "ended" }).eq("id", data);
+    await supabase.from("listings").update({ sale_type: "fixed" }).eq("id", auction.listing_id).eq("sale_type", "auction");
     return { ok: true };
   });
 
@@ -455,6 +574,7 @@ export const adminGetAuctions = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    await supabase.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", new Date().toISOString());
     const { data, error } = await supabase
       .from("auctions")
       .select("*, listings(title, image_urls)")

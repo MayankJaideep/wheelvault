@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export function HotWheelsPlaceholder({ className = "" }: { className?: string }) {
   return (
     <div
@@ -25,6 +27,7 @@ export function ListingImage({
   alt: string;
   className?: string;
 }) {
-  if (!src) return <HotWheelsPlaceholder className={className} />;
-  return <img src={src} alt={alt} className={`w-full h-full object-cover ${className}`} loading="lazy" />;
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <HotWheelsPlaceholder className={className} />;
+  return <img src={src} alt={alt} className={`w-full h-full object-cover ${className}`} loading="lazy" onError={() => setFailed(true)} />;
 }

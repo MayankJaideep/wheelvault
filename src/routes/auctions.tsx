@@ -24,29 +24,30 @@ function AuctionsPage() {
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="flex items-center gap-3 mb-3">
         <Gavel className="size-7 text-primary" />
-        <h1 className="font-display font-extrabold text-3xl md:text-4xl">Live Auctions</h1>
+        <h1 className="font-display font-extrabold text-3xl md:text-4xl">Auctions</h1>
       </div>
-      <p className="text-vault-400">Real-time bidding. Highest bid wins.</p>
+      <p className="text-vault-400">Live bidding plus recently ended results. Highest bid wins.</p>
 
       {auctions.length === 0 ? (
-        <p className="text-center text-vault-400 py-20">No live auctions right now. Check back soon.</p>
+        <p className="text-center text-vault-400 py-20">No auctions right now. Check back soon.</p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-10">
           {auctions.map((a) => {
             const l = a.listings!;
+            const ended = a.status !== "live" || new Date(a.ends_at).getTime() <= Date.now();
             return (
               <Link key={a.id} to="/auction/$auctionId" params={{ auctionId: a.id }} className="group block bg-vault-900/60 ring-1 ring-white/5 rounded-2xl overflow-hidden hover:ring-primary/40 transition-all">
                 <div className="aspect-[4/3] relative">
                   <ListingImage src={l?.image_urls?.[0]} alt={l?.title ?? ""} />
-                  <div className="absolute top-3 left-3 bg-primary text-vault-950 text-[10px] font-bold uppercase px-2 py-1 rounded flex items-center gap-1">
-                    <Timer className="size-3" /> {formatTimeLeft(a.ends_at)}
+                  <div className={`absolute top-3 left-3 text-[10px] font-bold uppercase px-2 py-1 rounded flex items-center gap-1 ${ended ? "bg-vault-800 text-vault-200" : "bg-primary text-vault-950"}`}>
+                    <Timer className="size-3" /> {ended ? "Ended" : formatTimeLeft(a.ends_at)}
                   </div>
                 </div>
                 <div className="p-4">
                   <p className="text-xs text-vault-400 uppercase tracking-wide">{l?.brand || "Hot Wheels"}</p>
                   <p className="font-medium truncate group-hover:text-primary">{l?.title}</p>
                   <div className="mt-3">
-                    <p className="text-[10px] uppercase text-vault-500 tracking-wider">Current bid</p>
+                    <p className="text-[10px] uppercase text-vault-500 tracking-wider">{ended ? "Winning bid" : "Current bid"}</p>
                     <p className="text-primary font-display font-bold text-xl">{formatINR(a.current_bid_cents)}</p>
                   </div>
                 </div>

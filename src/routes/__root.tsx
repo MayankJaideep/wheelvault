@@ -201,7 +201,7 @@ function Footer() {
           <p className="text-sm text-vault-400 leading-relaxed">
             All orders are confirmed over WhatsApp. Send your address, payment & shipping (BlueDart / DHL) is arranged directly.
           </p>
-          <a href="https://wa.me/917483595994" target="_blank" rel="noopener noreferrer" className="inline-flex mt-3 items-center gap-2 text-[#25D366] text-sm font-semibold">
+          <a href="https://api.whatsapp.com/send?phone=917483595994" target="_blank" rel="noopener noreferrer" className="inline-flex mt-3 items-center gap-2 text-[#25D366] text-sm font-semibold">
             +91 74835 95994
           </a>
         </div>
