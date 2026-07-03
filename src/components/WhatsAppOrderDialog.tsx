@@ -35,7 +35,20 @@ export function WhatsAppOrderDialog(props: Props) {
       setError("Name, phone and address are required");
       return;
     }
-    const pendingWindow = window.open("about:blank", "_blank");
+    const fallbackRef = `${props.kind}-${Date.now().toString(36)}`;
+    const immediateUrl = whatsappOrderUrl({
+      kind: props.kind,
+      itemTitle: props.itemTitle,
+      amountInr: Math.round(props.amountCents / 100),
+      buyerName: name.trim(),
+      buyerPhone: phone.trim(),
+      buyerAddress: address.trim(),
+      pincode: pincode.trim(),
+      notes: notes.trim(),
+      refId: fallbackRef,
+      itemImageUrl: props.itemImageUrl,
+    });
+    const pendingWindow = window.open(immediateUrl, "_blank", "noopener,noreferrer");
     setSubmitting(true);
     try {
       const { inquiry } = await create({
@@ -51,27 +64,24 @@ export function WhatsAppOrderDialog(props: Props) {
           notes: notes.trim() || undefined,
         },
       });
-      const url = whatsappOrderUrl({
+      const confirmedUrl = whatsappOrderUrl({
         kind: props.kind,
         itemTitle: props.itemTitle,
         amountInr: Math.round(props.amountCents / 100),
-        buyerName: name,
-        buyerPhone: phone,
-        buyerAddress: address,
-        pincode,
-        notes,
+        buyerName: name.trim(),
+        buyerPhone: phone.trim(),
+        buyerAddress: address.trim(),
+        pincode: pincode.trim(),
+        notes: notes.trim(),
         refId: inquiry.id.slice(0, 8),
         itemImageUrl: props.itemImageUrl,
       });
-      if (pendingWindow && !pendingWindow.closed) {
-        pendingWindow.location.href = url;
-      } else {
-        window.location.href = url;
-      }
+      if (pendingWindow && !pendingWindow.closed) pendingWindow.location.href = confirmedUrl;
+      else window.location.href = confirmedUrl;
       props.onClose();
     } catch (err: any) {
-      if (pendingWindow && !pendingWindow.closed) pendingWindow.close();
-      setError(err?.message ?? "Could not submit. Please try again.");
+      if (!pendingWindow || pendingWindow.closed) window.location.href = immediateUrl;
+      props.onClose();
     } finally {
       setSubmitting(false);
     }
