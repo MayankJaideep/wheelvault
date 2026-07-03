@@ -67,11 +67,15 @@ function isExternalUrl(path: string) {
   return path.startsWith("http://") || path.startsWith("https://");
 }
 
-async function signPaths(paths: string[]): Promise<string[]> {
+async function signPathMap(paths: string[]): Promise<Map<string, string>> {
   if (!paths || paths.length === 0) return [];
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const urlMap = new Map<string, string>();
   const storagePaths = Array.from(new Set(paths.filter((p) => p && !isExternalUrl(p))));
-  const signedMap = new Map<string, string>();
+
+  for (const path of paths) {
+    if (path && isExternalUrl(path)) urlMap.set(path, path);
+  }
 
   if (storagePaths.length > 0) {
     const { data, error } = await supabaseAdmin.storage
@@ -80,21 +84,26 @@ async function signPaths(paths: string[]): Promise<string[]> {
 
     if (!error) {
       for (const row of data ?? []) {
-        if (row.path && row.signedUrl) signedMap.set(row.path, row.signedUrl);
+        if (row.path && row.signedUrl) urlMap.set(row.path, row.signedUrl);
       }
     }
   }
 
+  return urlMap;
+}
+
+async function signPaths(paths: string[]): Promise<string[]> {
+  const signedMap = await signPathMap(paths);
+
   return paths
     .filter(Boolean)
-    .map((p) => (isExternalUrl(p) ? p : signedMap.get(p)))
+    .map((p) => signedMap.get(p))
     .filter(Boolean) as string[];
 }
 
 async function signListings<T extends { image_urls: string[] | null }>(rows: T[]): Promise<T[]> {
   const allPaths = Array.from(new Set(rows.flatMap((r) => r.image_urls ?? [])));
-  const signed = await signPaths(allPaths);
-  const signedMap = new Map(allPaths.map((path, i) => [path, signed[i]]));
+  const signedMap = await signPathMap(allPaths);
 
   return rows.map((r) => ({
     ...r,
@@ -104,8 +113,7 @@ async function signListings<T extends { image_urls: string[] | null }>(rows: T[]
 
 async function signAuctions(rows: any[]): Promise<any[]> {
   const allPaths = Array.from(new Set(rows.flatMap((r) => r.listings?.image_urls ?? [])));
-  const signed = await signPaths(allPaths);
-  const signedMap = new Map(allPaths.map((path, i) => [path, signed[i]]));
+  const signedMap = await signPathMap(allPaths);
 
   return rows.map((r) => ({
     ...r,
