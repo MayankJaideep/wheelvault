@@ -46,5 +46,5 @@ export function buildWhatsappOrderMessage(args: WhatsappOrderArgs): string {
 
 export function whatsappOrderUrl(args: WhatsappOrderArgs): string {
   const message = encodeURIComponent(buildWhatsappOrderMessage(args));
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  return `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${message}`;
 }
