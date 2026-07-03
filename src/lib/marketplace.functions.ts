@@ -502,7 +502,14 @@ export const adminEndAuction = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
+    const { data: auction, error: readError } = await supabase
+      .from("auctions")
+      .select("listing_id")
+      .eq("id", data)
+      .single();
+    if (readError || !auction) throw new Error("Auction not found");
     await supabase.from("auctions").update({ status: "ended" }).eq("id", data);
+    await supabase.from("listings").update({ sale_type: "fixed" }).eq("id", auction.listing_id).eq("sale_type", "auction");
     return { ok: true };
   });
 

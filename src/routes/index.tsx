@@ -32,7 +32,7 @@ function Home() {
   const { data: auctions } = useQuery(auctionsQO);
   const { data: all } = useQuery(allQO);
   const featuredItems = featured?.listings ?? [];
-  const auctionItems = auctions?.auctions ?? [];
+  const auctionItems = (auctions?.auctions ?? []).filter((a: any) => a.status === "live" && new Date(a.ends_at).getTime() > Date.now());
   const allItems = all?.listings ?? [];
 
   return (

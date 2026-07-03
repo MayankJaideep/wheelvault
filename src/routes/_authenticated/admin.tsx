@@ -216,6 +216,7 @@ function AuctionsTab() {
       setShow(false); setListingId(""); setStart(""); setInc("100"); setDays("3"); setEndsAtLocal("");
       qc.invalidateQueries({ queryKey: ["admin-auctions"] });
       qc.invalidateQueries({ queryKey: ["auctions"] });
+      qc.invalidateQueries({ queryKey: ["listings"] });
     } catch (e: any) { setErr(e?.message ?? "Failed"); }
   }
   async function endIt(id: string) {
@@ -223,6 +224,7 @@ function AuctionsTab() {
     await end({ data: id });
     qc.invalidateQueries({ queryKey: ["admin-auctions"] });
     qc.invalidateQueries({ queryKey: ["auctions"] });
+    qc.invalidateQueries({ queryKey: ["listings"] });
   }
 
   return (
