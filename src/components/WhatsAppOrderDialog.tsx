@@ -35,7 +35,7 @@ export function WhatsAppOrderDialog(props: Props) {
       setError("Name, phone and address are required");
       return;
     }
-    const pendingWindow = window.open("about:blank", "_blank", "noopener,noreferrer");
+    const pendingWindow = window.open("about:blank", "_blank");
     setSubmitting(true);
     try {
       const { inquiry } = await create({
@@ -63,8 +63,11 @@ export function WhatsAppOrderDialog(props: Props) {
         refId: inquiry.id.slice(0, 8),
         itemImageUrl: props.itemImageUrl,
       });
-      if (pendingWindow && !pendingWindow.closed) pendingWindow.location.href = url;
-      else window.location.href = url;
+      if (pendingWindow && !pendingWindow.closed) {
+        pendingWindow.location.href = url;
+      } else {
+        window.location.href = url;
+      }
       props.onClose();
     } catch (err: any) {
       if (pendingWindow && !pendingWindow.closed) pendingWindow.close();

@@ -22,6 +22,7 @@ function ListingPage() {
   const { listingId } = Route.useParams();
   const { data } = useQuery(qo(listingId));
   const l = data?.listing;
+  const activeAuction = data?.auction;
   const [active, setActive] = useState(0);
   const [dialogKind, setDialogKind] = useState<null | "buy" | "reserve">(null);
   const [authed, setAuthed] = useState(false);
@@ -65,10 +66,10 @@ function ListingPage() {
           <h1 className="font-display font-extrabold text-3xl md:text-4xl tracking-tight mt-1">{l.title}</h1>
           <p className="text-primary font-display font-bold text-3xl mt-5">{formatINR(l.price_cents)}</p>
 
-          {l.sale_type === "auction" ? (
+          {activeAuction ? (
             <div className="mt-6 bg-vault-900/60 ring-1 ring-primary/30 rounded-xl p-5">
               <p className="text-sm text-vault-300">This item is up for live auction.</p>
-              <Link to="/auctions" className="mt-3 inline-flex bg-primary text-vault-950 font-semibold px-5 py-2.5 rounded-full">Go to auctions</Link>
+              <Link to="/auction/$auctionId" params={{ auctionId: activeAuction.id }} className="mt-3 inline-flex bg-primary text-vault-950 font-semibold px-5 py-2.5 rounded-full">Bid in auction</Link>
             </div>
           ) : (
             <div className="flex flex-col gap-3 mt-6">
