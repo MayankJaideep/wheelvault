@@ -28,7 +28,7 @@ export function WhatsAppOrderDialog(props: Props) {
 
   if (!props.open) return null;
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!name.trim() || !phone.trim() || !address.trim()) {
@@ -36,7 +36,7 @@ export function WhatsAppOrderDialog(props: Props) {
       return;
     }
     const fallbackRef = `${props.kind}-${Date.now().toString(36)}`;
-    const immediateUrl = whatsappOrderUrl({
+    const url = whatsappOrderUrl({
       kind: props.kind,
       itemTitle: props.itemTitle,
       amountInr: Math.round(props.amountCents / 100),
@@ -48,43 +48,25 @@ export function WhatsAppOrderDialog(props: Props) {
       refId: fallbackRef,
       itemImageUrl: props.itemImageUrl,
     });
-    const pendingWindow = window.open(immediateUrl, "_blank", "noopener,noreferrer");
+    // Fire-and-forget: save inquiry in background so navigation is instant and
+    // mobile popup blockers can't intercept it.
     setSubmitting(true);
-    try {
-      const { inquiry } = await create({
-        data: {
-          listing_id: props.listingId,
-          auction_id: props.auctionId,
-          kind: props.kind,
-          buyer_name: name.trim(),
-          buyer_phone: phone.trim(),
-          buyer_address: address.trim(),
-          buyer_pincode: pincode.trim() || undefined,
-          amount_cents: props.amountCents,
-          notes: notes.trim() || undefined,
-        },
-      });
-      const confirmedUrl = whatsappOrderUrl({
+    create({
+      data: {
+        listing_id: props.listingId,
+        auction_id: props.auctionId,
         kind: props.kind,
-        itemTitle: props.itemTitle,
-        amountInr: Math.round(props.amountCents / 100),
-        buyerName: name.trim(),
-        buyerPhone: phone.trim(),
-        buyerAddress: address.trim(),
-        pincode: pincode.trim(),
-        notes: notes.trim(),
-        refId: inquiry.id.slice(0, 8),
-        itemImageUrl: props.itemImageUrl,
-      });
-      if (pendingWindow && !pendingWindow.closed) pendingWindow.location.href = confirmedUrl;
-      else window.location.href = confirmedUrl;
-      props.onClose();
-    } catch (err: any) {
-      if (!pendingWindow || pendingWindow.closed) window.location.href = immediateUrl;
-      props.onClose();
-    } finally {
-      setSubmitting(false);
-    }
+        buyer_name: name.trim(),
+        buyer_phone: phone.trim(),
+        buyer_address: address.trim(),
+        buyer_pincode: pincode.trim() || undefined,
+        amount_cents: props.amountCents,
+        notes: notes.trim() || undefined,
+      },
+    }).catch(() => {});
+    // Navigate the current tab straight to WhatsApp — works on iOS, Android, and desktop.
+    window.location.href = url;
+    props.onClose();
   }
 
   const title =
