@@ -67,25 +67,43 @@ function isExternalUrl(path: string) {
   return path.startsWith("http://") || path.startsWith("https://");
 }
 
+// In-memory cache of signed URLs. Signed URLs are valid 7 days; cache for 6 days to be safe.
+const SIGNED_URL_CACHE_MS = 6 * 24 * 60 * 60 * 1000;
+const signedUrlCache = new Map<string, { url: string; expires: number }>();
+
 async function signPathMap(paths: string[]): Promise<Map<string, string>> {
   if (!paths || paths.length === 0) return new Map<string, string>();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const urlMap = new Map<string, string>();
-  const storagePaths = Array.from(new Set(paths.filter((p) => p && !isExternalUrl(p))));
+  const now = Date.now();
+  const toSign: string[] = [];
 
   for (const path of paths) {
-    if (path && isExternalUrl(path)) urlMap.set(path, path);
+    if (!path) continue;
+    if (isExternalUrl(path)) {
+      urlMap.set(path, path);
+      continue;
+    }
+    const cached = signedUrlCache.get(path);
+    if (cached && cached.expires > now) {
+      urlMap.set(path, cached.url);
+    } else {
+      toSign.push(path);
+    }
   }
 
+  const storagePaths = Array.from(new Set(toSign));
   if (storagePaths.length > 0) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.storage
       .from("listing-images")
       .createSignedUrls(storagePaths, SIGNED_URL_TTL);
-
     if (!error) {
       for (const [index, row] of (data ?? []).entries()) {
         const originalPath = row.path ?? storagePaths[index];
-        if (originalPath && row.signedUrl) urlMap.set(originalPath, row.signedUrl);
+        if (originalPath && row.signedUrl) {
+          urlMap.set(originalPath, row.signedUrl);
+          signedUrlCache.set(originalPath, { url: row.signedUrl, expires: now + SIGNED_URL_CACHE_MS });
+        }
       }
     }
   }
@@ -93,19 +111,9 @@ async function signPathMap(paths: string[]): Promise<Map<string, string>> {
   return urlMap;
 }
 
-async function signPaths(paths: string[]): Promise<string[]> {
-  const signedMap = await signPathMap(paths);
-
-  return paths
-    .filter(Boolean)
-    .map((p) => signedMap.get(p))
-    .filter(Boolean) as string[];
-}
-
 async function signListings<T extends { image_urls: string[] | null }>(rows: T[]): Promise<T[]> {
   const allPaths = Array.from(new Set(rows.flatMap((r) => r.image_urls ?? [])));
   const signedMap = await signPathMap(allPaths);
-
   return rows.map((r) => ({
     ...r,
     image_urls: (r.image_urls ?? []).map((path) => signedMap.get(path)).filter(Boolean) as string[],
@@ -115,7 +123,6 @@ async function signListings<T extends { image_urls: string[] | null }>(rows: T[]
 async function signAuctions(rows: any[]): Promise<any[]> {
   const allPaths = Array.from(new Set(rows.flatMap((r) => r.listings?.image_urls ?? [])));
   const signedMap = await signPathMap(allPaths);
-
   return rows.map((r) => ({
     ...r,
     listings: r.listings
@@ -127,20 +134,32 @@ async function signAuctions(rows: any[]): Promise<any[]> {
   }));
 }
 
+// Throttle reconcile so it runs at most once every 60s per worker instance.
+let lastReconcile = 0;
+let reconcileInFlight: Promise<void> | null = null;
 async function reconcileEndedAuctions(supabaseAdmin: any) {
-  const now = new Date().toISOString();
-  await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", now);
-
-  const [{ data: inactiveAuctions }, { data: liveAuctions }] = await Promise.all([
-    supabaseAdmin.from("auctions").select("listing_id").or(`status.neq.live,ends_at.lte.${now}`),
-    supabaseAdmin.from("auctions").select("listing_id").eq("status", "live").gt("ends_at", now),
-  ]);
-
-  const liveIds = new Set((liveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean));
-  const staleIds = Array.from(new Set((inactiveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean))).filter((id) => !liveIds.has(id));
-  if (staleIds.length > 0) {
-    await supabaseAdmin.from("listings").update({ sale_type: "fixed" }).in("id", staleIds).eq("sale_type", "auction");
-  }
+  const now = Date.now();
+  if (now - lastReconcile < 60_000) return;
+  if (reconcileInFlight) return reconcileInFlight;
+  lastReconcile = now;
+  reconcileInFlight = (async () => {
+    try {
+      const nowIso = new Date().toISOString();
+      await supabaseAdmin.from("auctions").update({ status: "ended" }).eq("status", "live").lte("ends_at", nowIso);
+      const [{ data: inactiveAuctions }, { data: liveAuctions }] = await Promise.all([
+        supabaseAdmin.from("auctions").select("listing_id").or(`status.neq.live,ends_at.lte.${nowIso}`),
+        supabaseAdmin.from("auctions").select("listing_id").eq("status", "live").gt("ends_at", nowIso),
+      ]);
+      const liveIds = new Set((liveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean));
+      const staleIds = Array.from(new Set((inactiveAuctions ?? []).map((a: any) => a.listing_id).filter(Boolean))).filter((id) => !liveIds.has(id));
+      if (staleIds.length > 0) {
+        await supabaseAdmin.from("listings").update({ sale_type: "fixed" }).in("id", staleIds).eq("sale_type", "auction");
+      }
+    } finally {
+      reconcileInFlight = null;
+    }
+  })();
+  return reconcileInFlight;
 }
 
 // ---------- PUBLIC LISTINGS ----------
