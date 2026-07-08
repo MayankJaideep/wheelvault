@@ -22,11 +22,13 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showReset, setShowReset] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    setShowReset(false);
     setLoading(true);
 
     try {
@@ -37,20 +39,38 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (signUpError) throw signUpError;
-        // Auto sign-in after signup (email confirmation disabled)
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
         window.location.assign("/");
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signInError) throw signInError;
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          if (signInError.message?.toLowerCase().includes("invalid")) setShowReset(true);
+          throw signInError;
+        }
         window.location.assign("/");
       }
     } catch (err: any) {
       setError(err.message ?? "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendResetEmail() {
+    setError(null);
+    setMessage(null);
+    if (!email) { setError("Enter your email above first."); return; }
+    setLoading(true);
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (err) throw err;
+      setMessage("Password reset link sent. Check your email (and spam folder) to set a new password.");
+      setShowReset(false);
+    } catch (err: any) {
+      setError(err.message ?? "Could not send reset email.");
     } finally {
       setLoading(false);
     }
@@ -86,8 +106,15 @@ function AuthPage() {
         </div>
 
         {error && (
-          <div className="mb-6 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+          <div className="mb-4 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
             {error}
+            {showReset && (
+              <div className="mt-2 text-xs text-vault-300">
+                If you originally signed up with Google, you don't have a password yet.
+                Use <b>Continue with Google</b> below, or{" "}
+                <button type="button" onClick={sendResetEmail} className="underline text-primary">email me a link to set a password</button>.
+              </div>
+            )}
           </div>
         )}
 
@@ -137,6 +164,11 @@ function AuthPage() {
             {loading ? <Loader2 className="size-4 animate-spin" /> : null}
             {mode === "signin" ? "Sign In" : "Create Account"}
           </button>
+          {mode === "signin" && (
+            <button type="button" onClick={sendResetEmail} className="w-full text-xs text-vault-400 hover:text-primary text-center">
+              Forgot password? Email me a reset link
+            </button>
+          )}
         </form>
 
         <div className="relative my-8">
