@@ -240,16 +240,26 @@ function AuctionsTab() {
               {listings.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
             </select>
           </label>
-          {listingId && !selectedHasPhotos && (
-            <div className="sm:col-span-2 bg-vault-950/70 ring-1 ring-primary/30 rounded-lg p-4">
-              <p className="text-sm font-semibold text-primary mb-1">Add car photos before starting this auction</p>
-              <p className="text-xs text-vault-400 mb-3">Auctions must show at least one real photo so buyers can bid confidently.</p>
-              <label className="inline-flex items-center gap-2 bg-primary text-vault-950 px-4 py-2 rounded-full font-semibold text-sm cursor-pointer">
-                <ImageIcon className="size-4" /> {uploadingAuctionPhotos ? "Uploading…" : "Upload auction photos"}
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => onAuctionFiles(e.target.files)} />
-              </label>
-            </div>
-          )}
+          {listingId && (() => {
+            const existing = (selectedListing?.image_urls?.length ?? 0) + (addedPhotoCounts[listingId] ?? 0);
+            const needsPhotos = existing === 0;
+            return (
+              <div className={`sm:col-span-2 bg-vault-950/70 ring-1 rounded-lg p-4 ${needsPhotos ? "ring-primary/40" : "ring-white/10"}`}>
+                <p className={`text-sm font-semibold mb-1 ${needsPhotos ? "text-primary" : "text-vault-200"}`}>
+                  {needsPhotos ? "Add car photos before starting this auction" : `Auction photos (${existing} uploaded)`}
+                </p>
+                <p className="text-xs text-vault-400 mb-3">
+                  {needsPhotos
+                    ? "Auctions must show at least one real photo so buyers can bid confidently."
+                    : "You can add more photos for this auction, or continue with the existing ones."}
+                </p>
+                <label className="inline-flex items-center gap-2 bg-primary text-vault-950 px-4 py-2 rounded-full font-semibold text-sm cursor-pointer">
+                  <ImageIcon className="size-4" /> {uploadingAuctionPhotos ? "Uploading…" : needsPhotos ? "Upload auction photos" : "Add more photos"}
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => onAuctionFiles(e.target.files)} />
+                </label>
+              </div>
+            );
+          })()}
           <label className="text-sm">Starting bid (₹)<input required type="number" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
           <label className="text-sm">Min increment (₹)<input required type="number" value={inc} onChange={(e) => setInc(e.target.value)} className="mt-1 w-full bg-vault-950 ring-1 ring-white/10 rounded px-3 py-2" /></label>
           <label className="text-sm sm:col-span-2">End time
