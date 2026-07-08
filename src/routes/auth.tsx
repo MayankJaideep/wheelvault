@@ -164,6 +164,11 @@ function AuthPage() {
             {loading ? <Loader2 className="size-4 animate-spin" /> : null}
             {mode === "signin" ? "Sign In" : "Create Account"}
           </button>
+          {mode === "signin" && (
+            <button type="button" onClick={sendResetEmail} className="w-full text-xs text-vault-400 hover:text-primary text-center">
+              Forgot password? Email me a reset link
+            </button>
+          )}
         </form>
 
         <div className="relative my-8">
