@@ -106,8 +106,15 @@ function AuthPage() {
         </div>
 
         {error && (
-          <div className="mb-6 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+          <div className="mb-4 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
             {error}
+            {showReset && (
+              <div className="mt-2 text-xs text-vault-300">
+                If you originally signed up with Google, you don't have a password yet.
+                Use <b>Continue with Google</b> below, or{" "}
+                <button type="button" onClick={sendResetEmail} className="underline text-primary">email me a link to set a password</button>.
+              </div>
+            )}
           </div>
         )}
 
