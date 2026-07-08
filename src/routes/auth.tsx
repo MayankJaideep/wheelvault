@@ -40,14 +40,14 @@ function AuthPage() {
         // Auto sign-in after signup (email confirmation disabled)
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
-        navigate({ to: "/", replace: true });
+        window.location.assign("/");
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (signInError) throw signInError;
-        navigate({ to: "/", replace: true });
+        window.location.assign("/");
       }
     } catch (err: any) {
       setError(err.message ?? "Authentication failed.");
