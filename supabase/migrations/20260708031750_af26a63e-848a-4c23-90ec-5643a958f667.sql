@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.enforce_auction_has_photos() FROM PUBLIC, anon, authenticated;
