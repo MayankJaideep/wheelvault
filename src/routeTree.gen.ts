@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -20,6 +21,11 @@ import { Route as AuctionAuctionIdRouteImport } from './routes/auction/$auctionI
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CollectionsRoute = CollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/collections': typeof CollectionsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/auction/$auctionId': typeof AuctionAuctionIdRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
+    | '/reset-password'
     | '/admin'
     | '/profile'
     | '/auction/$auctionId'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
+    | '/reset-password'
     | '/admin'
     | '/profile'
     | '/auction/$auctionId'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/browse'
     | '/collections'
+    | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/profile'
     | '/auction/$auctionId'
@@ -149,12 +161,20 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   CollectionsRoute: typeof CollectionsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AuctionAuctionIdRoute: typeof AuctionAuctionIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/collections': {
       id: '/collections'
       path: '/collections'
@@ -249,6 +269,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   CollectionsRoute: CollectionsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   AuctionAuctionIdRoute: AuctionAuctionIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
 }
